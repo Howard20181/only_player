@@ -120,6 +120,7 @@ import one.only.player.feature.player.extensions.nameRes
 import one.only.player.feature.player.extensions.noRippleClickable
 import one.only.player.feature.player.extensions.seekByRequestedOffset
 import one.only.player.feature.player.extensions.seekToRequestedPosition
+import one.only.player.feature.player.extensions.toMessageResId
 import one.only.player.feature.player.input.PlayerKeyboardController
 import one.only.player.feature.player.model.VideoChapter
 import one.only.player.feature.player.service.previewVideoFilters
@@ -1222,17 +1223,19 @@ internal fun MediaPlayerScreen(
     }
 
     errorState.error?.let { error ->
+        // 只有单个媒体项时不提供播放下一个，退出按钮独占整行
+        val hasNextMediaItem = player.hasNextMediaItem()
         AppDialog(
             onDismissRequest = { },
             title = stringResource(coreUiR.string.error_playing_video),
             content = {
-                MiuixText(text = error.message ?: stringResource(coreUiR.string.unknown_error))
+                MiuixText(text = stringResource(error.toMessageResId()))
             },
-            confirmButton = {
-                if (player.hasNextMediaItem()) {
+            confirmButton = if (hasNextMediaItem) {
+                {
                     MiuixTextButton(
                         modifier = Modifier.testTag("btn_error_play_next"),
-                        text = stringResource(coreUiR.string.play_next_video),
+                        text = stringResource(coreUiR.string.play_next),
                         colors = MiuixButtonDefaults.textButtonColorsPrimary(),
                         onClick = {
                             errorState.dismiss()
@@ -1241,6 +1244,8 @@ internal fun MediaPlayerScreen(
                         },
                     )
                 }
+            } else {
+                null
             },
             dismissButton = {
                 MiuixTextButton(
