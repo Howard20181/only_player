@@ -780,7 +780,11 @@ class PlayerService : MediaSessionService() {
         val failedPlayer = session.player as? ExoPlayer ?: return false
         val mediaId = failedPlayer.currentMediaItem?.mediaId ?: return false
         if (!softwareDecoderRetried.add(mediaId)) return false
-        val mediaItems = (0 until failedPlayer.mediaItemCount).map { failedPlayer.getMediaItemAt(it) }
+        val mediaItems = (0 until failedPlayer.mediaItemCount).map {
+            failedPlayer.getMediaItemAt(it).copy(
+                isVideoEffectsAvailable = shouldApplyVideoEffects(DecoderPriority.PREFER_APP),
+            )
+        }
         if (mediaItems.isEmpty()) return false
 
         val currentIndex = failedPlayer.currentMediaItemIndex.coerceIn(0, mediaItems.lastIndex)
@@ -851,7 +855,12 @@ class PlayerService : MediaSessionService() {
         if (decoderPriority == activeDecoderPriority) return
         val session = mediaSession ?: return
         val currentPlayer = session.player as? ExoPlayer ?: return
-        val mediaItems = (0 until currentPlayer.mediaItemCount).map { currentPlayer.getMediaItemAt(it) }
+        // 会话接入新播放器前，整条队列必须携带新解码器的可用状态。
+        val mediaItems = (0 until currentPlayer.mediaItemCount).map {
+            currentPlayer.getMediaItemAt(it).copy(
+                isVideoEffectsAvailable = shouldApplyVideoEffects(decoderPriority),
+            )
+        }
         if (mediaItems.isEmpty()) {
             Logger.info(TAG, "Switch decoder to ${decoderPriority.logName()} without active media items")
             val nextPlayer = createPlayer(

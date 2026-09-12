@@ -11,7 +11,10 @@ import androidx.media3.exoplayer.audio.AudioRendererEventListener
 import androidx.media3.exoplayer.audio.AudioSink
 import androidx.media3.exoplayer.audio.DefaultAudioSink
 import androidx.media3.exoplayer.mediacodec.MediaCodecSelector
+import androidx.media3.exoplayer.video.MediaCodecVideoRenderer
+import androidx.media3.exoplayer.video.VideoRendererEventListener
 import io.github.anilbeesetti.nextlib.media3ext.ffdecoder.FfmpegAudioRenderer
+import io.github.anilbeesetti.nextlib.media3ext.ffdecoder.FfmpegVideoRenderer
 import io.github.anilbeesetti.nextlib.media3ext.ffdecoder.NextRenderersFactory
 
 @OptIn(UnstableApi::class)
@@ -20,6 +23,45 @@ class NormalizingRenderersFactory(
     private val volumeNormalizationAudioProcessor: AudioProcessor,
     private val shouldUseAudioExtensionFallback: Boolean,
 ) : NextRenderersFactory(context) {
+
+    override fun buildVideoRenderers(
+        context: Context,
+        extensionRendererMode: Int,
+        mediaCodecSelector: MediaCodecSelector,
+        enableDecoderFallback: Boolean,
+        eventHandler: Handler,
+        eventListener: VideoRendererEventListener,
+        allowedVideoJoiningTimeMs: Long,
+        out: ArrayList<Renderer>,
+    ) {
+        val hardwareRenderer = VideoEffectsRenderer(
+            builder = MediaCodecVideoRenderer.Builder(context)
+                .setCodecAdapterFactory(codecAdapterFactory)
+                .setMediaCodecSelector(mediaCodecSelector)
+                .setAllowedJoiningTimeMs(allowedVideoJoiningTimeMs)
+                .setEnableDecoderFallback(enableDecoderFallback)
+                .setEventHandler(eventHandler)
+                .setEventListener(eventListener)
+                .setMaxDroppedFramesToNotify(MAX_DROPPED_VIDEO_FRAME_COUNT_TO_NOTIFY),
+            eventHandler = eventHandler,
+            eventListener = eventListener,
+        )
+        out.add(hardwareRenderer)
+        if (extensionRendererMode == EXTENSION_RENDERER_MODE_OFF) return
+
+        val softwareRenderer = FfmpegVideoRenderer(
+            allowedVideoJoiningTimeMs,
+            eventHandler,
+            eventListener,
+            MAX_DROPPED_VIDEO_FRAME_COUNT_TO_NOTIFY,
+        )
+        val extensionRendererIndex = if (extensionRendererMode == EXTENSION_RENDERER_MODE_PREFER) {
+            out.lastIndex
+        } else {
+            out.size
+        }
+        out.add(extensionRendererIndex, softwareRenderer)
+    }
 
     override fun buildAudioSink(
         context: Context,
