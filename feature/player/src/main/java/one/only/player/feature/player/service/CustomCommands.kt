@@ -17,6 +17,7 @@ enum class CustomCommands(val customAction: String) {
     SET_SKIP_SILENCE_ENABLED(customAction = "SET_SKIP_SILENCE_ENABLED"),
     GET_SKIP_SILENCE_ENABLED(customAction = "GET_SKIP_SILENCE_ENABLED"),
     SET_IS_SCRUBBING_MODE_ENABLED(customAction = "SET_IS_SCRUBBING_MODE_ENABLED"),
+    SET_IS_SEEK_PREVIEW_ENABLED(customAction = "SET_IS_SEEK_PREVIEW_ENABLED"),
     SET_PERSISTENT_PLAYBACK_SPEED(customAction = "SET_PERSISTENT_PLAYBACK_SPEED"),
     SET_TRANSIENT_PLAYBACK_SPEED(customAction = "SET_TRANSIENT_PLAYBACK_SPEED"),
     GET_SUBTITLE_DELAY(customAction = "GET_SUBTITLE_DELAY"),
@@ -48,6 +49,7 @@ enum class CustomCommands(val customAction: String) {
         const val SEEK_WAS_APPLIED_KEY = "seek_was_applied"
         const val SKIP_SILENCE_ENABLED_KEY = "skip_silence_enabled"
         const val IS_SCRUBBING_MODE_ENABLED_KEY = "is_scrubbing_mode_enabled"
+        const val IS_SEEK_PREVIEW_ENABLED_KEY = "is_seek_preview_enabled"
         const val PLAYBACK_SPEED_KEY = "playback_speed"
         const val SUBTITLE_DELAY_KEY = "subtitle_delay"
         const val SUBTITLE_SPEED_KEY = "subtitle_speed"
@@ -124,6 +126,13 @@ fun MediaController.setMediaControllerIsScrubbingModeEnabled(isEnabled: Boolean)
         putBoolean(CustomCommands.IS_SCRUBBING_MODE_ENABLED_KEY, isEnabled)
     }
     sendCustomCommand(CustomCommands.SET_IS_SCRUBBING_MODE_ENABLED.sessionCommand, args)
+}
+
+fun MediaController.setMediaControllerIsSeekPreviewEnabled(isEnabled: Boolean) {
+    val args = Bundle().apply {
+        putBoolean(CustomCommands.IS_SEEK_PREVIEW_ENABLED_KEY, isEnabled)
+    }
+    sendCustomCommand(CustomCommands.SET_IS_SEEK_PREVIEW_ENABLED.sessionCommand, args)
 }
 
 fun MediaController.setPersistentPlaybackSpeed(speed: Float) {

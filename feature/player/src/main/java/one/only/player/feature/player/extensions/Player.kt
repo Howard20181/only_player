@@ -7,12 +7,15 @@ import androidx.media3.common.Player
 import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.SeekParameters
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionResult
 import com.google.common.util.concurrent.ListenableFuture
 import one.only.player.core.common.Logger
 import one.only.player.feature.player.service.preciseSeekTo
 import one.only.player.feature.player.service.setMediaControllerIsScrubbingModeEnabled
+import one.only.player.feature.player.service.setMediaControllerIsSeekPreviewEnabled
+
 fun Player.switchTrack(trackType: @C.TrackType Int, trackIndex: Int) {
     val trackTypeText = when (trackType) {
         C.TRACK_TYPE_AUDIO -> "audio"
@@ -148,5 +151,16 @@ fun Player.setIsScrubbingModeEnabled(isEnabled: Boolean) {
     when (this) {
         is MediaController -> this.setMediaControllerIsScrubbingModeEnabled(isEnabled)
         is ExoPlayer -> this.isScrubbingModeEnabled = isEnabled
+    }
+}
+
+// 预览期放宽 seek 精度到最近关键帧，长视频才能跟上手指；关闭时恢复精确 seek
+@OptIn(UnstableApi::class)
+fun Player.setIsSeekPreviewEnabled(isEnabled: Boolean) {
+    when (this) {
+        is MediaController -> this.setMediaControllerIsSeekPreviewEnabled(isEnabled)
+        is ExoPlayer -> this.setSeekParameters(
+            if (isEnabled) SeekParameters.CLOSEST_SYNC else SeekParameters.DEFAULT,
+        )
     }
 }

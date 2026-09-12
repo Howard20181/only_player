@@ -113,6 +113,14 @@ private fun GesturePreferencesContent(
                     isChecked = uiState.preferences.shouldUseSeekControls,
                     onClick = { onEvent(GesturePreferencesUiEvent.ToggleUseSeekControls) },
                 )
+                PreferenceSwitch(
+                    modifier = Modifier.testTag("switch_settings_gesture_seek_preview_frame"),
+                    title = stringResource(id = R.string.seek_preview_frame),
+                    description = stringResource(id = R.string.seek_preview_frame_description),
+                    icon = AppIcons.Replay,
+                    isChecked = uiState.preferences.isSeekPreviewFrameEnabled,
+                    onClick = { onEvent(GesturePreferencesUiEvent.ToggleSeekPreviewFrame) },
+                )
                 PreferenceSlider(
                     modifier = Modifier.testTag("item_settings_gesture_seek_sensitivity"),
                     sliderModifier = Modifier.testTag("slider_settings_gesture_seek_sensitivity"),

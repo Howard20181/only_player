@@ -189,6 +189,9 @@ internal suspend fun DebugCommandEntryPoint.setSetting(
             preferences.copy(shouldRememberPlayerBrightness = isEnabled)
         }
         "gesture.seek" -> updatePlayerBoolean(value) { preferences, isEnabled -> preferences.copy(shouldUseSeekControls = isEnabled) }
+        "gesture.seek_preview_frame" -> updatePlayerBoolean(value) { preferences, isEnabled ->
+            preferences.copy(isSeekPreviewFrameEnabled = isEnabled)
+        }
         "gesture.seek_sensitivity" -> updatePlayerFloat(value) { preferences, floatValue ->
             preferences.copy(seekSensitivity = floatValue.coerceIn(0.1f, 2.0f))
         }
@@ -366,6 +369,7 @@ internal suspend fun DebugCommandEntryPoint.toggleSetting(target: String?) {
         "player.remember_brightness" -> togglePlayer { it.copy(shouldRememberPlayerBrightness = !it.shouldRememberPlayerBrightness) }
         "player.dim_video_controls" -> togglePlayer { it.copy(shouldDimVideoWhenControlsVisible = !it.shouldDimVideoWhenControlsVisible) }
         "gesture.seek" -> togglePlayer { it.copy(shouldUseSeekControls = !it.shouldUseSeekControls) }
+        "gesture.seek_preview_frame" -> togglePlayer { it.copy(isSeekPreviewFrameEnabled = !it.isSeekPreviewFrameEnabled) }
         "gesture.brightness" -> togglePlayer { it.copy(isBrightnessSwipeGestureEnabled = !it.isBrightnessSwipeGestureEnabled) }
         "gesture.volume" -> togglePlayer { it.copy(isVolumeSwipeGestureEnabled = !it.isVolumeSwipeGestureEnabled) }
         "gesture.double_tap" -> togglePlayer { it.copy(doubleTapGesture = if (it.doubleTapGesture == DoubleTapGesture.NONE) DoubleTapGesture.FAST_FORWARD_AND_REWIND else DoubleTapGesture.NONE) }

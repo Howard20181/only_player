@@ -250,6 +250,7 @@ internal fun MediaPlayerScreen(
         player = player,
         sensitivity = playerPreferences.seekSensitivity,
         isSeekGestureEnabled = playerPreferences.shouldUseSeekControls,
+        isSeekPreviewFrameEnabled = playerPreferences.isSeekPreviewFrameEnabled,
     )
     val pictureInPictureState = rememberPictureInPictureState(
         player = player,

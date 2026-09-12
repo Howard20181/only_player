@@ -164,10 +164,16 @@ class PlayerService : MediaSessionService() {
     private val serviceScope: CoroutineScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private var mediaSession: MediaSession? = null
 
+    // 拖动预览期间放宽 seek 精度，松手后恢复精确 seek
+    private var isSeekPreviewEnabled = false
+
     companion object {
         private const val TAG = "PlayerService"
         private const val DEFAULT_AMBIENCE_TARGET_ASPECT_RATIO = 16f / 9f
         private val EXACT_SEEK_PARAMETERS = SeekParameters.DEFAULT
+
+        // 拖动预览只求快：落到最近关键帧，避免逐帧解码追不上手指
+        private val PREVIEW_SEEK_PARAMETERS = SeekParameters.CLOSEST_SYNC
         private val REMOTE_SOURCE_URI_SCHEMES = setOf("smb", "ftp")
 
         // Media3 只对 file、content 等本地 scheme 用小缓冲，smb、ftp 会分到 125 MB 视频缓冲，
@@ -1280,8 +1286,8 @@ class PlayerService : MediaSessionService() {
     }
 
     private fun applySeekParameters(player: ExoPlayer) {
-        // 用户拖进度必须落到目标时间；CLOSEST_SYNC 在关键帧稀疏时会停在开头附近
-        player.setSeekParameters(EXACT_SEEK_PARAMETERS)
+        // 落定的 seek 必须精确到目标时间；仅拖动预览期允许退到最近关键帧
+        player.setSeekParameters(if (isSeekPreviewEnabled) PREVIEW_SEEK_PARAMETERS else EXACT_SEEK_PARAMETERS)
     }
 
     private fun MediaItem?.shouldUseFastSeek(): Boolean {
@@ -1449,6 +1455,12 @@ class PlayerService : MediaSessionService() {
                 CustomCommands.SET_IS_SCRUBBING_MODE_ENABLED -> {
                     val isScrubbingModeEnabled = args.getBoolean(CustomCommands.IS_SCRUBBING_MODE_ENABLED_KEY)
                     mediaSession?.player?.setIsScrubbingModeEnabled(isScrubbingModeEnabled)
+                    return@future SessionResult(SessionResult.RESULT_SUCCESS)
+                }
+
+                CustomCommands.SET_IS_SEEK_PREVIEW_ENABLED -> {
+                    isSeekPreviewEnabled = args.getBoolean(CustomCommands.IS_SEEK_PREVIEW_ENABLED_KEY)
+                    (mediaSession?.player as? ExoPlayer)?.let(::applySeekParameters)
                     return@future SessionResult(SessionResult.RESULT_SUCCESS)
                 }
 

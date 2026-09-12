@@ -139,6 +139,8 @@
     <string name="spatial_audio">空間音訊</string>
     <string name="player_description">播放器外觀、播放控制元件</string>
     <string name="seek_gesture_description">橫向滑動以向前或向後跳轉</string>
+    <string name="seek_preview_frame">拖動時預覽目標幀</string>
+    <string name="seek_preview_frame_description">拖動進度時即時顯示目標位置的畫面，而不是停在目前幀</string>
     <string name="quick_settings">快速設定</string>
     <string name="cloud_quick_settings">雲端快速設定</string>
     <string name="select_subtitle_track">選擇字幕軌</string>

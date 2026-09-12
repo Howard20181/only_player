@@ -41,6 +41,7 @@ data class PlayerPreferences(
     val isVolumeSwipeGestureEnabled: Boolean = true,
     val isBrightnessSwipeGestureEnabled: Boolean = true,
     val shouldUseSeekControls: Boolean = true,
+    val isSeekPreviewFrameEnabled: Boolean = false,
     val shouldUseZoomControls: Boolean = true,
     val isPanGestureEnabled: Boolean = true,
     val doubleTapGesture: DoubleTapGesture = DoubleTapGesture.BOTH,
