@@ -4,11 +4,8 @@ import android.net.Uri
 import androidx.core.net.toUri
 import java.io.File
 import javax.inject.Inject
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.launch
-import one.only.player.core.common.di.ApplicationScope
 import one.only.player.core.common.extensions.canonicalPathOrSelf
 import one.only.player.core.common.extensions.toCanonicalFilePathOrNull
 import one.only.player.core.data.mappers.toFolder
@@ -39,7 +36,6 @@ class LocalMediaRepository @Inject constructor(
     private val favoriteRepository: FavoriteRepository,
     private val playlistRepository: PlaylistRepository,
     private val playbackMarkRepository: PlaybackMarkRepository,
-    @ApplicationScope private val applicationScope: CoroutineScope,
 ) : MediaRepository {
 
     override fun getVideosFlow(): Flow<List<Video>> = mediumDao.getAllWithInfo().map { media ->
@@ -244,6 +240,7 @@ class LocalMediaRepository @Inject constructor(
         if (uris.isEmpty()) return emptyList()
 
         val movedUris = mutableListOf<String>()
+        val movedPaths = mutableListOf<StoragePath>()
         uris.distinct().forEach { uriString ->
             val medium = mediumDao.get(uriString) ?: return@forEach
             val currentState = mediumStateDao.get(uriString) ?: MediumStateEntity(uriString = uriString)
@@ -290,8 +287,11 @@ class LocalMediaRepository @Inject constructor(
                 newLocalPath = moved.path,
                 newTitle = moved.fileName,
             )
-            refreshMediaPathAsync(moved.path)
+            movedPaths += StoragePath.of(moved.path.canonicalPathOrSelf())
             movedUris += movedUriString
+        }
+        if (movedPaths.isNotEmpty()) {
+            mediaSynchronizer.refreshMovedPaths(movedPaths)
         }
         return movedUris
     }
@@ -308,14 +308,9 @@ class LocalMediaRepository @Inject constructor(
 
         var movedCount = 0
         var failedCount = 0
-        distinctUris.forEach { uriString ->
-            if (shouldCancel()) {
-                return MediaMoveSummary(
-                    movedCount = movedCount,
-                    failedCount = failedCount,
-                    canceledCount = distinctUris.size - movedCount - failedCount,
-                )
-            }
+        val movedPaths = mutableListOf<StoragePath>()
+        for (uriString in distinctUris) {
+            if (shouldCancel()) break
 
             val medium = mediumDao.get(uriString)
             val currentName = medium?.name ?: uriString
@@ -345,13 +340,7 @@ class LocalMediaRepository @Inject constructor(
                 },
             )
             if (moved == null) {
-                if (shouldCancel()) {
-                    return MediaMoveSummary(
-                        movedCount = movedCount,
-                        failedCount = failedCount,
-                        canceledCount = distinctUris.size - movedCount - failedCount,
-                    )
-                }
+                if (shouldCancel()) break
                 failedCount++
                 onProgress(
                     MediaMoveProgress(
@@ -362,12 +351,10 @@ class LocalMediaRepository @Inject constructor(
                         totalBytes = totalBytes,
                     ),
                 )
-                return@forEach
+                continue
             }
             updateMovedMedium(uriString, moved)
-            moved.originalPath?.let { originalPath -> mediaSynchronizer.refresh(originalPath) }
-            mediaSynchronizer.registerManualVideoPath(moved.path)
-            mediaSynchronizer.refresh(moved.path)
+            movedPaths += StoragePath.of(moved.path.canonicalPathOrSelf())
             movedCount++
             onProgress(
                 MediaMoveProgress(
@@ -379,9 +366,11 @@ class LocalMediaRepository @Inject constructor(
                 ),
             )
         }
+        mediaSynchronizer.refreshMovedPaths(movedPaths)
         return MediaMoveSummary(
             movedCount = movedCount,
             failedCount = failedCount,
+            canceledCount = distinctUris.size - movedCount - failedCount,
         )
     }
 
@@ -399,20 +388,18 @@ class LocalMediaRepository @Inject constructor(
         var partiallyMovedCount = 0
         var failedCount = 0
         var processedCount = 0
-        distinctFolderPaths.forEach { folderPath ->
-            if (shouldCancel()) {
-                return MediaMoveSummary(
-                    movedCount = movedCount,
-                    partiallyMovedCount = partiallyMovedCount,
-                    failedCount = failedCount,
-                    canceledCount = distinctFolderPaths.size - processedCount,
-                )
-            }
+        val movedPaths = mutableListOf<StoragePath>()
+        for (folderPath in distinctFolderPaths) {
+            if (shouldCancel()) break
 
             val folder = File(folderPath)
-            val totalBytes = folder.walkTopDown()
-                .filter(File::isFile)
-                .sumOf(File::length)
+            val files = folder.walkTopDown().filter(File::isFile).toList()
+            val totalBytes = files.sumOf(File::length)
+            val uriStringByOriginalPath = files
+                .map(File::getPath)
+                .chunked(SQLITE_VARIABLE_LIMIT)
+                .flatMap { paths -> mediumDao.getAllByPaths(paths) }
+                .associate { medium -> StoragePath.of(medium.path) to medium.uriString }
             onProgress(
                 MediaMoveProgress(
                     completedCount = processedCount,
@@ -424,17 +411,11 @@ class LocalMediaRepository @Inject constructor(
             val result = mediaService.moveFolderToFolder(folderPath, targetFolderPath)
 
             val movedFolderPath = File(targetFolderPath, folder.name).path
-            val uriStringByOriginalPath = result.movedMedia
-                .mapNotNull(MediaMoveResult::originalPath)
-                .chunked(SQLITE_VARIABLE_LIMIT)
-                .flatMap { paths -> mediumDao.getAllByPaths(paths) }
-                .associate { medium -> StoragePath.of(medium.path) to medium.uriString }
-
             result.movedMedia.forEach { moved ->
+                movedPaths += StoragePath.of(moved.path.canonicalPathOrSelf())
                 val originalPath = moved.originalPath ?: return@forEach
                 val uriString = uriStringByOriginalPath[StoragePath.of(originalPath)] ?: return@forEach
                 updateMovedMedium(uriString, moved)
-                mediaSynchronizer.registerManualVideoPath(moved.path)
             }
             when {
                 result.isComplete -> {
@@ -451,9 +432,6 @@ class LocalMediaRepository @Inject constructor(
                 result.movedMedia.isNotEmpty() -> partiallyMovedCount++
                 else -> failedCount++
             }
-            if (result.isComplete || result.movedMedia.isNotEmpty()) {
-                mediaSynchronizer.refresh()
-            }
             processedCount++
             onProgress(
                 MediaMoveProgress(
@@ -465,10 +443,12 @@ class LocalMediaRepository @Inject constructor(
                 ),
             )
         }
+        mediaSynchronizer.refreshMovedPaths(movedPaths)
         return MediaMoveSummary(
             movedCount = movedCount,
             partiallyMovedCount = partiallyMovedCount,
             failedCount = failedCount,
+            canceledCount = distinctFolderPaths.size - processedCount,
         )
     }
 
@@ -476,6 +456,7 @@ class LocalMediaRepository @Inject constructor(
         if (uris.isEmpty()) return emptyList()
 
         val restoredUris = mutableListOf<String>()
+        val restoredPaths = mutableListOf<StoragePath>()
         uris.distinct().forEach { uriString ->
             val currentState = mediumStateDao.get(uriString) ?: return@forEach
             val medium = mediumDao.get(uriString) ?: return@forEach
@@ -528,8 +509,11 @@ class LocalMediaRepository @Inject constructor(
                 newLocalPath = restored.path,
                 newTitle = restored.fileName,
             )
-            refreshMediaPathAsync(restored.path)
+            restoredPaths += StoragePath.of(restored.path.canonicalPathOrSelf())
             restoredUris += restoredUriString
+        }
+        if (restoredPaths.isNotEmpty()) {
+            mediaSynchronizer.refreshMovedPaths(restoredPaths)
         }
         return restoredUris
     }
@@ -601,12 +585,6 @@ class LocalMediaRepository @Inject constructor(
             else -> null
         } ?: return null
         return File(rawPath).path
-    }
-
-    private fun refreshMediaPathAsync(path: String) {
-        applicationScope.launch {
-            mediaSynchronizer.refresh(path)
-        }
     }
 
     private fun MediumWithInfo.isMarkedInRecycleBin(): Boolean = mediumStateEntity?.isInRecycleBin == true
