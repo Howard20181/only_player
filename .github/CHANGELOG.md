@@ -1,7 +1,7 @@
-- Fix portrait videos being displayed in landscape orientation, with screen rotation now following each video
-- Widen the top spacing on the About page
+- Preview the frame at the target position while dragging the seek gesture or the progress bar, available as an opt-in setting under gesture settings
+- Show playback error messages in the app language instead of the built-in English text
 
 ---
 
-- 修复竖屏视频被错误横屏显示的问题，屏幕方向现在跟随每个视频自身的方向
-- 加宽关于页顶部留白
+- 拖动快进快退或进度条时可以实时预览目标位置的画面，可在手势设置中自行开启
+- 播放出错时的提示改为跟随应用语言显示，不再使用内置的英文原文
