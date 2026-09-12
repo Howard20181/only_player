@@ -268,6 +268,11 @@ File(path.value).delete()
 
 ---
 
+## Git Workflow
+
+- 任务每完成一部分就对该部分改动发起 commit，不要等全部做完再一次性提交
+- 除非用户明确要求，不得擅自执行 git push；推送前必须说明待推送的提交内容并等待用户确认
+
 ## Version Bump
 
 使用 `/version-bump` 触发；版本号、changelog、依赖更新和提交规则以本地 version-bump skill 为准。
