@@ -1,7 +1,9 @@
-- Preview the frame at the target position while dragging the seek gesture or the progress bar, available as an opt-in setting under gesture settings
-- Show playback error messages in the app language instead of the built-in English text
+- Video filters now work reliably, no longer distorting the picture or blanking it while paused
+- Videos moved in bulk appear in the right folder right away, and recycled ones keep playing after being restored
+- Pull to refresh no longer freezes the list, scrolling comes back quickly while the refresh keeps running in the background
 
 ---
 
-- 拖动快进快退或进度条时可以实时预览目标位置的画面，可在手势设置中自行开启
-- 播放出错时的提示改为跟随应用语言显示，不再使用内置的英文原文
+- 视频滤镜现在能可靠生效，切换时画面不变形，暂停中也不会黑屏
+- 批量移动的视频马上出现在正确的文件夹里，回收站恢复的视频也能正常播放
+- 下拉刷新不再长时间卡住列表，很快就能继续滑动，刷新在后台继续进行
