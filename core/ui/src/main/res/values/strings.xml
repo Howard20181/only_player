@@ -234,6 +234,12 @@
     <string name="reset_video_hue">Reset video hue</string>
     <string name="reset_video_gamma">Reset video gamma</string>
     <string name="reset_video_sharpening">Reset video sharpening</string>
+    <string name="video_filter_presets">Filter presets</string>
+    <string name="video_filter_presets_empty">No presets yet, tune the filters and save from the panel header</string>
+    <string name="save_current_as_video_filter_preset">Save current as preset</string>
+    <string name="save_video_filter_preset">Save filter preset</string>
+    <string name="video_filter_preset_name">Preset name</string>
+    <string name="delete_video_filter_preset">Delete preset</string>
     <string name="zoom_gesture">Zoom gesture</string>
     <string name="zoom_gesture_description">Pinch to zoom the video</string>
     <string name="audio_desc">Audio playback options</string>

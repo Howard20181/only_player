@@ -123,7 +123,6 @@ private fun GesturePreferencesContent(
                 )
                 PreferenceSlider(
                     modifier = Modifier.testTag("item_settings_gesture_seek_sensitivity"),
-                    sliderModifier = Modifier.testTag("slider_settings_gesture_seek_sensitivity"),
                     title = stringResource(R.string.seek_gesture_sensitivity),
                     description = uiState.preferences.seekSensitivity.toString(decimalPlaces = 2),
                     icon = AppIcons.Sensitivity,
@@ -142,7 +141,6 @@ private fun GesturePreferencesContent(
                 )
                 PreferenceSlider(
                     modifier = Modifier.testTag("item_settings_gesture_seek_increment"),
-                    sliderModifier = Modifier.testTag("slider_settings_gesture_seek_increment"),
                     title = stringResource(R.string.seek_increment),
                     description = stringResource(R.string.seconds, uiState.preferences.seekIncrement),
                     icon = AppIcons.Replay,
@@ -170,7 +168,6 @@ private fun GesturePreferencesContent(
                 )
                 PreferenceSlider(
                     modifier = Modifier.testTag("item_settings_gesture_brightness_sensitivity"),
-                    sliderModifier = Modifier.testTag("slider_settings_gesture_brightness_sensitivity"),
                     title = stringResource(R.string.brightness_gesture_sensitivity),
                     description = uiState.preferences.brightnessGestureSensitivity.toString(decimalPlaces = 2),
                     icon = AppIcons.Sensitivity,
@@ -200,7 +197,6 @@ private fun GesturePreferencesContent(
                 )
                 PreferenceSlider(
                     modifier = Modifier.testTag("item_settings_gesture_volume_sensitivity"),
-                    sliderModifier = Modifier.testTag("slider_settings_gesture_volume_sensitivity"),
                     title = stringResource(R.string.volume_gesture_sensitivity),
                     description = uiState.preferences.volumeGestureSensitivity.toString(decimalPlaces = 2),
                     icon = AppIcons.Sensitivity,

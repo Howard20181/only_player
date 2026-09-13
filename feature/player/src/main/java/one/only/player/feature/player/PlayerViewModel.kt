@@ -35,10 +35,13 @@ import one.only.player.core.model.PlaybackMark
 import one.only.player.core.model.PlayerPreferences
 import one.only.player.core.model.Video
 import one.only.player.core.model.VideoContentScale
+import one.only.player.core.model.VideoFilterPreset
+import one.only.player.core.model.toVideoFilterPreset
 import one.only.player.core.model.withSubtitleStyleFrom
-import one.only.player.core.model.withVideoFilterAdjustment
+import one.only.player.core.model.withVideoFilterPresetApplied
+import one.only.player.core.model.withVideoFilterPresetDeleted
+import one.only.player.core.model.withVideoFilterPresetSaved
 import one.only.player.core.model.withVideoFiltersFrom
-import one.only.player.core.model.withVideoSharpening
 import one.only.player.feature.player.extensions.remoteFilePath
 import one.only.player.feature.player.extensions.remoteProtocol
 import one.only.player.feature.player.extensions.remoteServerId
@@ -203,11 +206,6 @@ class PlayerViewModel @Inject constructor(
         }
     }
 
-    fun updateVideoBrightness(value: Float) {
-        val normalizedValue = value.normalizeVideoFilter(PlayerPreferences.MIN_VIDEO_BRIGHTNESS, PlayerPreferences.MAX_VIDEO_BRIGHTNESS)
-        updateVideoFilter("brightness=$normalizedValue") { it.copy(videoBrightness = normalizedValue) }
-    }
-
     fun updateVideoFilters(preferences: PlayerPreferences) {
         val normalizedPreferences = preferences.normalizedVideoFilters()
         Logger.debug(TAG, "Update video filter from player: confirmed=$normalizedPreferences")
@@ -218,29 +216,31 @@ class PlayerViewModel @Inject constructor(
         }
     }
 
-    fun updateVideoContrast(value: Float) {
-        val normalizedValue = value.normalizeVideoFilter(PlayerPreferences.MIN_VIDEO_CONTRAST, PlayerPreferences.MAX_VIDEO_CONTRAST)
-        updateVideoFilter("contrast=$normalizedValue") { it.copy(videoContrast = normalizedValue) }
+    fun applyVideoFilterPreset(preset: VideoFilterPreset) {
+        Logger.debug(TAG, "Apply video filter preset from player: name=${preset.name}")
+        viewModelScope.launch {
+            preferencesRepository.updatePlayerPreferences {
+                it.withVideoFilterPresetApplied(preset)
+            }
+        }
     }
 
-    fun updateVideoSaturation(value: Float) {
-        val normalizedValue = value.normalizeVideoFilter(PlayerPreferences.MIN_VIDEO_SATURATION, PlayerPreferences.MAX_VIDEO_SATURATION, decimals = 0)
-        updateVideoFilter("saturation=$normalizedValue") { it.copy(videoSaturation = normalizedValue) }
+    fun saveVideoFilterPreset(name: String) {
+        Logger.debug(TAG, "Save video filter preset from player: name=$name")
+        viewModelScope.launch {
+            preferencesRepository.updatePlayerPreferences {
+                it.withVideoFilterPresetSaved(it.toVideoFilterPreset(name, System.currentTimeMillis()))
+            }
+        }
     }
 
-    fun updateVideoHue(value: Float) {
-        val normalizedValue = value.normalizeVideoFilter(PlayerPreferences.MIN_VIDEO_HUE, PlayerPreferences.MAX_VIDEO_HUE, decimals = 0)
-        updateVideoFilter("hue=$normalizedValue") { it.copy(videoHue = normalizedValue) }
-    }
-
-    fun updateVideoGamma(value: Float) {
-        val normalizedValue = value.normalizeVideoFilter(PlayerPreferences.MIN_VIDEO_GAMMA, PlayerPreferences.MAX_VIDEO_GAMMA)
-        updateVideoFilter("gamma=$normalizedValue") { it.copy(videoGamma = normalizedValue) }
-    }
-
-    fun updateVideoSharpening(value: Float) {
-        val normalizedValue = normalizeVideoSharpening(value)
-        updateVideoFilter("sharpening=$normalizedValue") { it.withVideoSharpening(normalizedValue) }
+    fun deleteVideoFilterPreset(preset: VideoFilterPreset) {
+        Logger.debug(TAG, "Delete video filter preset from player: name=${preset.name}")
+        viewModelScope.launch {
+            preferencesRepository.updatePlayerPreferences {
+                it.withVideoFilterPresetDeleted(preset)
+            }
+        }
     }
 
     private fun PlayerPreferences.normalizedVideoFilters(): PlayerPreferences = copy(
@@ -251,18 +251,6 @@ class PlayerViewModel @Inject constructor(
         videoGamma = videoGamma.normalizeVideoFilter(PlayerPreferences.MIN_VIDEO_GAMMA, PlayerPreferences.MAX_VIDEO_GAMMA),
         videoSharpening = normalizeVideoSharpening(videoSharpening),
     )
-
-    private fun updateVideoFilter(
-        debugValue: String,
-        transform: (PlayerPreferences) -> PlayerPreferences,
-    ) {
-        Logger.debug(TAG, "Update video filter from player: $debugValue")
-        viewModelScope.launch {
-            preferencesRepository.updatePlayerPreferences { preferences ->
-                preferences.withVideoFilterAdjustment(transform)
-            }
-        }
-    }
 
     fun setLoopMode(loopMode: LoopMode) {
         viewModelScope.launch {

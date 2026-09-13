@@ -1314,17 +1314,11 @@ class PlayerService : MediaSessionService() {
 
     private fun Bundle.toPlayerPreferences(): PlayerPreferences = PlayerPreferences(
         shouldApplyVideoFilters = getBoolean(CustomCommands.SHOULD_APPLY_VIDEO_FILTERS_KEY, false),
-        isVideoBrightnessFilterEnabled = getBoolean(CustomCommands.IS_VIDEO_BRIGHTNESS_FILTER_ENABLED_KEY, false),
         videoBrightness = getFloat(CustomCommands.VIDEO_BRIGHTNESS_KEY, PlayerPreferences.DEFAULT_VIDEO_BRIGHTNESS),
-        isVideoContrastFilterEnabled = getBoolean(CustomCommands.IS_VIDEO_CONTRAST_FILTER_ENABLED_KEY, false),
         videoContrast = getFloat(CustomCommands.VIDEO_CONTRAST_KEY, PlayerPreferences.DEFAULT_VIDEO_CONTRAST),
-        isVideoSaturationFilterEnabled = getBoolean(CustomCommands.IS_VIDEO_SATURATION_FILTER_ENABLED_KEY, false),
         videoSaturation = getFloat(CustomCommands.VIDEO_SATURATION_KEY, PlayerPreferences.DEFAULT_VIDEO_SATURATION),
-        isVideoHueFilterEnabled = getBoolean(CustomCommands.IS_VIDEO_HUE_FILTER_ENABLED_KEY, false),
         videoHue = getFloat(CustomCommands.VIDEO_HUE_KEY, PlayerPreferences.DEFAULT_VIDEO_HUE),
-        isVideoGammaFilterEnabled = getBoolean(CustomCommands.IS_VIDEO_GAMMA_FILTER_ENABLED_KEY, false),
         videoGamma = getFloat(CustomCommands.VIDEO_GAMMA_KEY, PlayerPreferences.DEFAULT_VIDEO_GAMMA),
-        isVideoSharpeningFilterEnabled = getBoolean(CustomCommands.IS_VIDEO_SHARPENING_FILTER_ENABLED_KEY, false),
         videoSharpening = getFloat(CustomCommands.VIDEO_SHARPENING_KEY, PlayerPreferences.DEFAULT_VIDEO_SHARPENING),
     )
 

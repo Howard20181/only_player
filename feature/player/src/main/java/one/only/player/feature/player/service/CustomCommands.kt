@@ -56,17 +56,11 @@ enum class CustomCommands(val customAction: String) {
         const val LOUDNESS_GAIN_KEY = "loudness_gain"
         const val IS_LOUDNESS_GAIN_SUPPORTED_KEY = "is_loudness_gain_supported"
         const val SHOULD_APPLY_VIDEO_FILTERS_KEY = "should_apply_video_filters"
-        const val IS_VIDEO_BRIGHTNESS_FILTER_ENABLED_KEY = "is_video_brightness_filter_enabled"
         const val VIDEO_BRIGHTNESS_KEY = "video_brightness"
-        const val IS_VIDEO_CONTRAST_FILTER_ENABLED_KEY = "is_video_contrast_filter_enabled"
         const val VIDEO_CONTRAST_KEY = "video_contrast"
-        const val IS_VIDEO_SATURATION_FILTER_ENABLED_KEY = "is_video_saturation_filter_enabled"
         const val VIDEO_SATURATION_KEY = "video_saturation"
-        const val IS_VIDEO_HUE_FILTER_ENABLED_KEY = "is_video_hue_filter_enabled"
         const val VIDEO_HUE_KEY = "video_hue"
-        const val IS_VIDEO_GAMMA_FILTER_ENABLED_KEY = "is_video_gamma_filter_enabled"
         const val VIDEO_GAMMA_KEY = "video_gamma"
-        const val IS_VIDEO_SHARPENING_FILTER_ENABLED_KEY = "is_video_sharpening_filter_enabled"
         const val VIDEO_SHARPENING_KEY = "video_sharpening"
         const val IS_AMBIENCE_MODE_ENABLED_KEY = "is_ambience_mode_enabled"
         const val AMBIENCE_TARGET_ASPECT_RATIO_KEY = "ambience_target_aspect_ratio"
@@ -201,17 +195,11 @@ fun MediaController.setLoudnessGain(gain: Int) {
 fun MediaController.previewVideoFilters(preferences: PlayerPreferences) {
     val args = Bundle().apply {
         putBoolean(CustomCommands.SHOULD_APPLY_VIDEO_FILTERS_KEY, preferences.shouldApplyVideoFilters)
-        putBoolean(CustomCommands.IS_VIDEO_BRIGHTNESS_FILTER_ENABLED_KEY, preferences.isVideoBrightnessFilterEnabled)
         putFloat(CustomCommands.VIDEO_BRIGHTNESS_KEY, preferences.videoBrightness)
-        putBoolean(CustomCommands.IS_VIDEO_CONTRAST_FILTER_ENABLED_KEY, preferences.isVideoContrastFilterEnabled)
         putFloat(CustomCommands.VIDEO_CONTRAST_KEY, preferences.videoContrast)
-        putBoolean(CustomCommands.IS_VIDEO_SATURATION_FILTER_ENABLED_KEY, preferences.isVideoSaturationFilterEnabled)
         putFloat(CustomCommands.VIDEO_SATURATION_KEY, preferences.videoSaturation)
-        putBoolean(CustomCommands.IS_VIDEO_HUE_FILTER_ENABLED_KEY, preferences.isVideoHueFilterEnabled)
         putFloat(CustomCommands.VIDEO_HUE_KEY, preferences.videoHue)
-        putBoolean(CustomCommands.IS_VIDEO_GAMMA_FILTER_ENABLED_KEY, preferences.isVideoGammaFilterEnabled)
         putFloat(CustomCommands.VIDEO_GAMMA_KEY, preferences.videoGamma)
-        putBoolean(CustomCommands.IS_VIDEO_SHARPENING_FILTER_ENABLED_KEY, preferences.isVideoSharpeningFilterEnabled)
         putFloat(CustomCommands.VIDEO_SHARPENING_KEY, preferences.videoSharpening)
     }
     sendCustomCommand(CustomCommands.PREVIEW_VIDEO_FILTERS.sessionCommand, args)

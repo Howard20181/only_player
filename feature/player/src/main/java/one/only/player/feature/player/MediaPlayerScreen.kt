@@ -44,7 +44,9 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.union
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -113,7 +115,10 @@ import one.only.player.core.model.playerControls
 import one.only.player.core.model.slotOf
 import one.only.player.core.ui.R as coreUiR
 import one.only.player.core.ui.components.AppDialog
+import one.only.player.core.ui.components.SaveVideoFilterPresetDialog
+import one.only.player.core.ui.components.VideoFilterPresetListContent
 import one.only.player.core.ui.components.VideoFiltersPanel
+import one.only.player.core.ui.designsystem.AppIcons
 import one.only.player.core.ui.extensions.copy
 import one.only.player.core.ui.extensions.playerCornerControlsCapacity
 import one.only.player.feature.player.extensions.nameRes
@@ -169,8 +174,11 @@ import one.only.player.feature.player.ui.controls.ControlsBottomModernView
 import one.only.player.feature.player.ui.controls.ControlsTopModernView
 import one.only.player.feature.player.ui.controls.UnlockControlsButton
 import one.only.player.feature.player.ui.panel.rememberFloatingPlayerPanelState
+import one.only.player.feature.player.ui.panel.rememberPlayerPanelTokens
 import one.only.player.feature.player.ui.playerControlBindings
 import top.yukonga.miuix.kmp.basic.ButtonDefaults as MiuixButtonDefaults
+import top.yukonga.miuix.kmp.basic.Icon as MiuixIcon
+import top.yukonga.miuix.kmp.basic.IconButton as MiuixIconButton
 import top.yukonga.miuix.kmp.basic.Text as MiuixText
 import top.yukonga.miuix.kmp.basic.TextButton as MiuixTextButton
 
@@ -380,17 +388,11 @@ internal fun MediaPlayerScreen(
     val sleepTimerState = rememberSleepTimerState(player = player)
     var shouldShowOverlay by remember { mutableStateOf(false) }
     var shouldAttachActivityVideoOutput by remember { mutableStateOf(true) }
-    var videoFiltersInitialPreferences by remember { mutableStateOf<PlayerPreferences?>(null) }
     var subtitleStylePreviewPreferences by remember { mutableStateOf<PlayerPreferences?>(null) }
     var isVideoMirrored by remember { mutableStateOf(false) }
+    var isSaveFilterPresetDialogVisible by remember { mutableStateOf(false) }
     val activePlayerPreferences = subtitleStylePreviewPreferences ?: playerPreferences
     val videoFiltersUnavailableMessage = stringResource(coreUiR.string.video_filters_unavailable_software_decoder)
-    fun restoreVideoFiltersPreview() {
-        videoFiltersInitialPreferences?.let { initialPreferences ->
-            (player as? androidx.media3.session.MediaController)?.previewVideoFilters(initialPreferences)
-        }
-        videoFiltersInitialPreferences = null
-    }
     fun updateSubtitleStyle(preferences: PlayerPreferences) {
         subtitleStylePreviewPreferences = preferences
         viewModel.updateSubtitleStyle(preferences)
@@ -401,7 +403,6 @@ internal fun MediaPlayerScreen(
     }
     val showVideoFilters = {
         if (metadataState.isVideoEffectsAvailable) {
-            videoFiltersInitialPreferences = playerPreferences
             openOverlayPanel(MenuRoute.VideoFilters)
         } else {
             Toast.makeText(context, videoFiltersUnavailableMessage, Toast.LENGTH_SHORT).show()
@@ -415,12 +416,7 @@ internal fun MediaPlayerScreen(
         )
         controlsVisibilityState.showControls()
     }
-    fun closeVideoFiltersOverlay() {
-        restoreVideoFiltersPreview()
-        menuRouteStack = emptyList()
-    }
-    fun confirmVideoFilters(preferences: PlayerPreferences) {
-        videoFiltersInitialPreferences = null
+    fun updateVideoFilters(preferences: PlayerPreferences) {
         (player as? androidx.media3.session.MediaController)?.previewVideoFilters(preferences)
         viewModel.updateVideoFilters(preferences)
     }
@@ -457,9 +453,6 @@ internal fun MediaPlayerScreen(
         }
     }
     fun dismissOverlay() {
-        if (menuRouteStack.contains(MenuRoute.VideoFilters)) {
-            restoreVideoFiltersPreview()
-        }
         menuRouteStack = emptyList()
     }
     fun seekToPlaybackMark(mark: PlaybackMark) {
@@ -521,9 +514,6 @@ internal fun MediaPlayerScreen(
     }
 
     fun popMenuRoute() {
-        if (menuRouteStack.lastOrNull() == MenuRoute.VideoFilters) {
-            restoreVideoFiltersPreview()
-        }
         if (menuRouteStack.size > 1) {
             menuRouteStack = menuRouteStack.dropLast(1)
         } else {
@@ -536,7 +526,6 @@ internal fun MediaPlayerScreen(
                 Toast.makeText(context, videoFiltersUnavailableMessage, Toast.LENGTH_SHORT).show()
                 return
             }
-            videoFiltersInitialPreferences = playerPreferences
         }
         menuRouteStack = menuRouteStack + target
     }
@@ -1077,6 +1066,7 @@ internal fun MediaPlayerScreen(
                         .noRippleClickable { dismissOverlay() },
                 )
             }
+            val menuPanelTokens = rememberPlayerPanelTokens()
             MenuOverlayView(
                 externalRoute = currentRoute,
                 title = titleForMenuRoute(
@@ -1089,6 +1079,32 @@ internal fun MediaPlayerScreen(
                     if (canGoBack) popMenuRoute() else dismissOverlay()
                 },
                 onDismiss = ::dismissOverlay,
+                trailingActions = if (currentRoute == MenuRoute.VideoFilters) {
+                    {
+                        MiuixIconButton(
+                            modifier = Modifier.testTag("btn_save_video_filter_preset"),
+                            onClick = { isSaveFilterPresetDialogVisible = true },
+                        ) {
+                            MiuixIcon(
+                                imageVector = AppIcons.Save,
+                                contentDescription = stringResource(coreUiR.string.save_video_filter_preset),
+                                tint = menuPanelTokens.contentColor,
+                            )
+                        }
+                        MiuixIconButton(
+                            modifier = Modifier.testTag("btn_video_filter_presets"),
+                            onClick = { navigateToMenuRoute(MenuRoute.VideoFilterPresets) },
+                        ) {
+                            MiuixIcon(
+                                imageVector = AppIcons.ColorFilter,
+                                contentDescription = stringResource(coreUiR.string.video_filter_presets),
+                                tint = menuPanelTokens.contentColor,
+                            )
+                        }
+                    }
+                } else {
+                    null
+                },
             ) { route ->
                 when (route) {
                     MenuRoute.Root -> MenuRootContent(
@@ -1160,12 +1176,21 @@ internal fun MediaPlayerScreen(
                     MenuRoute.VideoFilters -> VideoFiltersPanel(
                         modifier = Modifier.fillMaxSize(),
                         preferences = playerPreferences,
-                        onDismissRequest = ::closeVideoFiltersOverlay,
-                        onPreviewPreferences = { previewPreferences ->
-                            (player as? androidx.media3.session.MediaController)?.previewVideoFilters(previewPreferences)
-                        },
-                        onConfirmPreferences = ::confirmVideoFilters,
+                        onPreferencesChange = ::updateVideoFilters,
                     )
+                    MenuRoute.VideoFilterPresets -> Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                            .padding(horizontal = 24.dp)
+                            .padding(bottom = 24.dp),
+                    ) {
+                        VideoFilterPresetListContent(
+                            preferences = playerPreferences,
+                            onApplyPreset = viewModel::applyVideoFilterPreset,
+                            onDeletePreset = viewModel::deleteVideoFilterPreset,
+                        )
+                    }
 
                     MenuRoute.VideoInfo -> VideoInfoContent(
                         player = player,
@@ -1261,6 +1286,17 @@ internal fun MediaPlayerScreen(
         )
     }
 
+    if (isSaveFilterPresetDialogVisible) {
+        SaveVideoFilterPresetDialog(
+            onDismissRequest = { isSaveFilterPresetDialogVisible = false },
+            onSavePreset = { name ->
+                isSaveFilterPresetDialogVisible = false
+                viewModel.saveVideoFilterPreset(name)
+            },
+            shouldKeepSystemBarsHidden = true,
+        )
+    }
+
     BackHandler {
         when {
             menuRouteStack.size > 1 -> popMenuRoute()
@@ -1316,6 +1352,7 @@ private fun titleForMenuRoute(
     MenuRoute.VideoContentScale -> stringResource(coreUiR.string.video_zoom)
     MenuRoute.VideoInfo -> stringResource(coreUiR.string.video_info)
     MenuRoute.VideoFilters -> stringResource(coreUiR.string.video_filters)
+    MenuRoute.VideoFilterPresets -> stringResource(coreUiR.string.video_filter_presets)
     MenuRoute.Playlist -> stringResource(coreUiR.string.now_playing_with_count, playlistItemCount)
     MenuRoute.SleepTimer -> stringResource(coreUiR.string.sleep_timer)
     MenuRoute.Decoder -> stringResource(coreUiR.string.decoder_priority)

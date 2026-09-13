@@ -214,6 +214,12 @@
     <string name="reset_video_hue">重置视频色相</string>
     <string name="reset_video_gamma">重置视频 Gamma</string>
     <string name="reset_video_sharpening">重置视频锐化</string>
+    <string name="video_filter_presets">滤镜预设</string>
+    <string name="video_filter_presets_empty">暂无预设，调好滤镜后可在面板右上角保存</string>
+    <string name="save_current_as_video_filter_preset">保存当前为预设</string>
+    <string name="save_video_filter_preset">保存滤镜预设</string>
+    <string name="video_filter_preset_name">预设名称</string>
+    <string name="delete_video_filter_preset">删除预设</string>
     <string name="zoom_gesture">缩放手势</string>
     <string name="zoom_gesture_description">捏合可缩放视频</string>
     <string name="pause_on_headset_disconnect_desc">耳机从设备断开连接时暂停播放</string>

@@ -19,11 +19,13 @@ object AppIcons {
     val Brush: ImageVector get() = MingCuteBrush
     val BugReport: ImageVector get() = MingCuteBugReport
     val Caption: ImageVector get() = MingCuteCaption
+    val ChartLine: ImageVector get() = MingCuteChartLine
     val Check: ImageVector get() = MingCuteCheck
     val CheckBox: ImageVector get() = MingCuteCheckBox
     val CheckBoxOutline: ImageVector get() = MingCuteCheckBoxOutline
     val Close: ImageVector get() = MingCuteClose
     val Cloud: ImageVector get() = MingCuteCloud
+    val ColorFilter: ImageVector get() = MingCuteColorFilter
     val Copy: ImageVector get() = MingCuteCopy
     val DarkMode: ImageVector get() = MingCuteDarkMode
     val DashBoard: ImageVector get() = MingCuteDashBoard
@@ -33,8 +35,10 @@ object AppIcons {
     val DeselectAll: ImageVector get() = MingCuteDeselectAll
     val DoubleTap: ImageVector get() = MingCuteDoubleTap
     val DriveFileMove: ImageVector get() = MingCuteDriveFileMove
+    val Drop: ImageVector get() = MingCuteDrop
     val Edit: ImageVector get() = MingCuteEdit
     val ExpandMore: ImageVector get() = MingCuteExpandMore
+    val Exposure: ImageVector get() = MingCuteExposure
     val ExtraSettings: ImageVector get() = MingCuteExtraSettings
     val FileOpen: ImageVector get() = MingCuteFileOpen
     val Focus: ImageVector get() = MingCuteFocus
@@ -68,6 +72,7 @@ object AppIcons {
     val Player: ImageVector get() = MingCutePlayer
     val PlaylistPlay: ImageVector get() = MingCutePlaylistPlay
     val Priority: ImageVector get() = MingCutePriority
+    val Rainbow: ImageVector get() = MingCuteRainbow
     val Remove: ImageVector get() = MingCuteRemove
     val Replay: ImageVector get() = MingCuteReplay
     val Resume: ImageVector get() = MingCuteResume

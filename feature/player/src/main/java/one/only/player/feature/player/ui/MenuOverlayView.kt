@@ -40,6 +40,7 @@ sealed interface MenuRoute {
     data object VideoContentScale : MenuRoute
     data object VideoInfo : MenuRoute
     data object VideoFilters : MenuRoute
+    data object VideoFilterPresets : MenuRoute
     data object PlaybackMarks : MenuRoute
     data object Chapters : MenuRoute
 }
@@ -52,6 +53,7 @@ fun BoxScope.MenuOverlayView(
     onBack: () -> Unit,
     onDismiss: () -> Unit = {},
     panelState: FloatingPlayerPanelState = rememberFloatingPlayerPanelState(),
+    trailingActions: (@Composable () -> Unit)? = null,
     content: @Composable (MenuRoute) -> Unit,
 ) {
     val tokens = rememberPlayerPanelTokens()
@@ -69,12 +71,14 @@ fun BoxScope.MenuOverlayView(
     val displayedRoute = externalRoute ?: lastVisibleRoute
     val displayedTitle = if (externalRoute != null) title else lastVisibleTitle
     val displayedCanGoBack = if (externalRoute != null) canGoBack else lastVisibleCanGoBack
+    val displayedTrailingActions = if (externalRoute != null) trailingActions else null
     FloatingPlayerPanel(
         shouldShow = externalRoute != null,
         title = displayedTitle,
         panelState = panelState,
         testTag = "panel_player_menu",
         onDismiss = onDismiss,
+        trailingActions = displayedTrailingActions,
         navigationIcon = if (displayedCanGoBack) {
             {
                 MiuixIconButton(

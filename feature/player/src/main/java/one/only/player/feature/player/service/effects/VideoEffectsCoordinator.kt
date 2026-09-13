@@ -381,46 +381,15 @@ internal class VideoEffectsCoordinator(
 internal fun PlayerPreferences.toVideoFilterPreferences(): VideoFilterPreferences {
     if (!shouldApplyVideoFilters) return VideoFilterPreferences.default()
 
-    val filters = VideoFilterPreferences(
+    return VideoFilterPreferences(
         shouldApply = true,
-        isBrightnessEnabled = isVideoBrightnessFilterEnabled,
-        brightness = if (isVideoBrightnessFilterEnabled) {
-            videoBrightness.coerceIn(PlayerPreferences.MIN_VIDEO_BRIGHTNESS, PlayerPreferences.MAX_VIDEO_BRIGHTNESS)
-        } else {
-            PlayerPreferences.DEFAULT_VIDEO_BRIGHTNESS
-        },
-        isContrastEnabled = isVideoContrastFilterEnabled,
-        contrast = if (isVideoContrastFilterEnabled) {
-            videoContrast.coerceIn(PlayerPreferences.MIN_VIDEO_CONTRAST, PlayerPreferences.MAX_VIDEO_CONTRAST)
-        } else {
-            PlayerPreferences.DEFAULT_VIDEO_CONTRAST
-        },
-        isSaturationEnabled = isVideoSaturationFilterEnabled,
-        saturation = if (isVideoSaturationFilterEnabled) {
-            videoSaturation.coerceIn(PlayerPreferences.MIN_VIDEO_SATURATION, PlayerPreferences.MAX_VIDEO_SATURATION)
-        } else {
-            PlayerPreferences.DEFAULT_VIDEO_SATURATION
-        },
-        isHueEnabled = isVideoHueFilterEnabled,
-        hue = if (isVideoHueFilterEnabled) {
-            videoHue.coerceIn(PlayerPreferences.MIN_VIDEO_HUE, PlayerPreferences.MAX_VIDEO_HUE)
-        } else {
-            PlayerPreferences.DEFAULT_VIDEO_HUE
-        },
-        isGammaEnabled = isVideoGammaFilterEnabled,
-        gamma = if (isVideoGammaFilterEnabled) {
-            videoGamma.coerceIn(PlayerPreferences.MIN_VIDEO_GAMMA, PlayerPreferences.MAX_VIDEO_GAMMA)
-        } else {
-            PlayerPreferences.DEFAULT_VIDEO_GAMMA
-        },
-        isSharpeningEnabled = isVideoSharpeningFilterEnabled,
-        sharpening = if (isVideoSharpeningFilterEnabled) {
-            videoSharpening.coerceIn(PlayerPreferences.DEFAULT_VIDEO_SHARPENING, PlayerPreferences.MAX_VIDEO_SHARPENING)
-        } else {
-            PlayerPreferences.DEFAULT_VIDEO_SHARPENING
-        },
+        brightness = videoBrightness.coerceIn(PlayerPreferences.MIN_VIDEO_BRIGHTNESS, PlayerPreferences.MAX_VIDEO_BRIGHTNESS),
+        contrast = videoContrast.coerceIn(PlayerPreferences.MIN_VIDEO_CONTRAST, PlayerPreferences.MAX_VIDEO_CONTRAST),
+        saturation = videoSaturation.coerceIn(PlayerPreferences.MIN_VIDEO_SATURATION, PlayerPreferences.MAX_VIDEO_SATURATION),
+        hue = videoHue.coerceIn(PlayerPreferences.MIN_VIDEO_HUE, PlayerPreferences.MAX_VIDEO_HUE),
+        gamma = videoGamma.coerceIn(PlayerPreferences.MIN_VIDEO_GAMMA, PlayerPreferences.MAX_VIDEO_GAMMA),
+        sharpening = videoSharpening.coerceIn(PlayerPreferences.DEFAULT_VIDEO_SHARPENING, PlayerPreferences.MAX_VIDEO_SHARPENING),
     )
-    return if (filters.shouldCreateEffect()) filters else VideoFilterPreferences.default()
 }
 
 internal fun Format.isHdrVideoFormat(): Boolean {

@@ -155,7 +155,6 @@ private fun AudioPreferencesContent(
                 )
                 PreferenceSlider(
                     modifier = Modifier.testTag("item_settings_audio_initial_volume_limit"),
-                    sliderModifier = Modifier.testTag("slider_settings_audio_initial_volume_limit"),
                     title = stringResource(id = R.string.initial_volume_limit),
                     description = stringResource(id = R.string.percent, uiState.preferences.maxInitialPlayerVolumePercentage),
                     icon = AppIcons.VolumeUp,

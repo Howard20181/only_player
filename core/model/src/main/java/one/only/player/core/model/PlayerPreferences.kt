@@ -16,18 +16,13 @@ data class PlayerPreferences(
     val playerVideoZoom: VideoContentScale = VideoContentScale.BEST_FIT,
     val defaultPlaybackSpeed: Float = 1.0f,
     val shouldApplyVideoFilters: Boolean = false,
-    val isVideoBrightnessFilterEnabled: Boolean = false,
     val videoBrightness: Float = DEFAULT_VIDEO_BRIGHTNESS,
-    val isVideoContrastFilterEnabled: Boolean = false,
     val videoContrast: Float = DEFAULT_VIDEO_CONTRAST,
-    val isVideoSaturationFilterEnabled: Boolean = false,
     val videoSaturation: Float = DEFAULT_VIDEO_SATURATION,
-    val isVideoHueFilterEnabled: Boolean = false,
     val videoHue: Float = DEFAULT_VIDEO_HUE,
-    val isVideoGammaFilterEnabled: Boolean = false,
     val videoGamma: Float = DEFAULT_VIDEO_GAMMA,
-    val isVideoSharpeningFilterEnabled: Boolean = false,
     val videoSharpening: Float = DEFAULT_VIDEO_SHARPENING,
+    val videoFilterPresets: List<VideoFilterPreset> = emptyList(),
     val shouldAutoPlay: Boolean = true,
     val shouldPauseAtEndOfQueue: Boolean = false,
     val shouldAutoEnterPip: Boolean = true,
@@ -117,7 +112,6 @@ data class PlayerPreferences(
         const val MIN_VIDEO_GAMMA = 0.1f
         const val MAX_VIDEO_GAMMA = 3f
         const val DEFAULT_VIDEO_SHARPENING = 0f
-        const val DEFAULT_ACTIVE_VIDEO_SHARPENING = 0.5f
         const val MAX_VIDEO_SHARPENING = 1f
         const val MIN_LONG_PRESS_CONTROLS_SPEED = 0.2f
         const val MAX_LONG_PRESS_CONTROLS_SPEED = 4.0f
@@ -163,18 +157,13 @@ fun PlayerPreferences.withSubtitleStyleFrom(preferences: PlayerPreferences): Pla
 
 fun PlayerPreferences.withVideoFiltersFrom(preferences: PlayerPreferences): PlayerPreferences = copy(
     shouldApplyVideoFilters = preferences.shouldApplyVideoFilters,
-    isVideoBrightnessFilterEnabled = preferences.isVideoBrightnessFilterEnabled,
     videoBrightness = preferences.videoBrightness,
-    isVideoContrastFilterEnabled = preferences.isVideoContrastFilterEnabled,
     videoContrast = preferences.videoContrast,
-    isVideoSaturationFilterEnabled = preferences.isVideoSaturationFilterEnabled,
     videoSaturation = preferences.videoSaturation,
-    isVideoHueFilterEnabled = preferences.isVideoHueFilterEnabled,
     videoHue = preferences.videoHue,
-    isVideoGammaFilterEnabled = preferences.isVideoGammaFilterEnabled,
     videoGamma = preferences.videoGamma,
-    isVideoSharpeningFilterEnabled = preferences.isVideoSharpeningFilterEnabled,
     videoSharpening = preferences.videoSharpening,
+    videoFilterPresets = preferences.videoFilterPresets,
 )
 
 fun PlayerPreferences.withVideoFilterAdjustment(
@@ -182,18 +171,6 @@ fun PlayerPreferences.withVideoFilterAdjustment(
 ): PlayerPreferences {
     if (!shouldApplyVideoFilters) return this
     return transform(this)
-}
-
-fun PlayerPreferences.withVideoSharpeningFilterEnabled(isEnabled: Boolean): PlayerPreferences {
-    if (!shouldApplyVideoFilters) return this
-    return copy(
-        isVideoSharpeningFilterEnabled = isEnabled,
-        videoSharpening = if (isEnabled && videoSharpening == PlayerPreferences.DEFAULT_VIDEO_SHARPENING) {
-            PlayerPreferences.DEFAULT_ACTIVE_VIDEO_SHARPENING
-        } else {
-            videoSharpening
-        },
-    )
 }
 
 fun PlayerPreferences.withVideoSharpening(value: Float): PlayerPreferences {
@@ -204,6 +181,54 @@ fun PlayerPreferences.withVideoSharpening(value: Float): PlayerPreferences {
     )
     return copy(videoSharpening = normalizedValue)
 }
+
+fun PlayerPreferences.withVideoFilterPresetApplied(preset: VideoFilterPreset): PlayerPreferences = copy(
+    shouldApplyVideoFilters = true,
+    videoBrightness = preset.brightness.coerceIn(
+        PlayerPreferences.MIN_VIDEO_BRIGHTNESS,
+        PlayerPreferences.MAX_VIDEO_BRIGHTNESS,
+    ),
+    videoContrast = preset.contrast.coerceIn(
+        PlayerPreferences.MIN_VIDEO_CONTRAST,
+        PlayerPreferences.MAX_VIDEO_CONTRAST,
+    ),
+    videoSaturation = preset.saturation.coerceIn(
+        PlayerPreferences.MIN_VIDEO_SATURATION,
+        PlayerPreferences.MAX_VIDEO_SATURATION,
+    ),
+    videoHue = preset.hue.coerceIn(
+        PlayerPreferences.MIN_VIDEO_HUE,
+        PlayerPreferences.MAX_VIDEO_HUE,
+    ),
+    videoGamma = preset.gamma.coerceIn(
+        PlayerPreferences.MIN_VIDEO_GAMMA,
+        PlayerPreferences.MAX_VIDEO_GAMMA,
+    ),
+    videoSharpening = preset.sharpening.coerceIn(
+        PlayerPreferences.DEFAULT_VIDEO_SHARPENING,
+        PlayerPreferences.MAX_VIDEO_SHARPENING,
+    ),
+)
+
+fun PlayerPreferences.toVideoFilterPreset(name: String, id: Long): VideoFilterPreset = VideoFilterPreset(
+    id = id,
+    name = name,
+    brightness = videoBrightness,
+    contrast = videoContrast,
+    saturation = videoSaturation,
+    hue = videoHue,
+    gamma = videoGamma,
+    sharpening = videoSharpening,
+)
+
+fun PlayerPreferences.withVideoFilterPresetSaved(preset: VideoFilterPreset): PlayerPreferences = copy(
+    videoFilterPresets = videoFilterPresets
+        .filterNot { it.id == preset.id || it.name == preset.name } + preset,
+)
+
+fun PlayerPreferences.withVideoFilterPresetDeleted(preset: VideoFilterPreset): PlayerPreferences = copy(
+    videoFilterPresets = videoFilterPresets.filterNot { it.id == preset.id },
+)
 
 fun PlayerPreferences.playerControls(slot: PlayerControlSlot): List<PlayerControl> = controlsArrangement.controlsIn(slot)
 
