@@ -24,8 +24,13 @@ import one.only.player.core.model.SubtitleColor
 import one.only.player.core.model.SubtitleEdgeStyle
 import one.only.player.core.model.ThemeConfig
 import one.only.player.core.model.ThumbnailGenerationStrategy
+import one.only.player.core.model.VideoFilterPreset
+import one.only.player.core.model.toVideoFilterPreset
 import one.only.player.core.model.withControlMoved
 import one.only.player.core.model.withVideoFilterAdjustment
+import one.only.player.core.model.withVideoFilterPresetApplied
+import one.only.player.core.model.withVideoFilterPresetDeleted
+import one.only.player.core.model.withVideoFilterPresetSaved
 import one.only.player.core.model.withVideoSharpening
 
 internal fun Context.runSettingsCommand(
@@ -386,7 +391,9 @@ internal suspend fun DebugCommandEntryPoint.toggleSetting(target: String?) {
 internal suspend fun DebugCommandEntryPoint.runSettingAction(
     context: Context,
     target: String?,
+    extras: Bundle?,
 ) {
+    val value = extras ?: Bundle.EMPTY
     when (target) {
         "general.clear_thumbnail_cache" -> mediaInfoSynchronizer().clearThumbnailsCache()
         "general.clear_video_cache" -> mediaInfoSynchronizer().clearVideoCache()
@@ -404,6 +411,18 @@ internal suspend fun DebugCommandEntryPoint.runSettingAction(
         }
         "player.reset_controls" -> preferencesRepository().updatePlayerPreferences {
             it.copy(controlsArrangement = PlayerControlsArrangement())
+        }
+        "decoder.save_filter_preset" -> preferencesRepository().updatePlayerPreferences {
+            val name = value.requiredString(EXTRA_VALUE)
+            it.withVideoFilterPresetSaved(it.toVideoFilterPreset(name, System.currentTimeMillis()))
+        }
+        "decoder.apply_filter_preset" -> {
+            val preset = findVideoFilterPreset(value.requiredString(EXTRA_VALUE))
+            preferencesRepository().updatePlayerPreferences { it.withVideoFilterPresetApplied(preset) }
+        }
+        "decoder.delete_filter_preset" -> {
+            val preset = findVideoFilterPreset(value.requiredString(EXTRA_VALUE))
+            preferencesRepository().updatePlayerPreferences { it.withVideoFilterPresetDeleted(preset) }
         }
         else -> error("Unknown action target: $target")
     }
@@ -511,3 +530,8 @@ private suspend fun DebugCommandEntryPoint.toggleApplication(transform: (Applica
 private suspend fun DebugCommandEntryPoint.togglePlayer(transform: (PlayerPreferences) -> PlayerPreferences) {
     preferencesRepository().updatePlayerPreferences(transform)
 }
+
+// 先查再写：预设不存在时直接报错，避免被 DataSource 的 IO 容错吞掉
+private fun DebugCommandEntryPoint.findVideoFilterPreset(name: String): VideoFilterPreset = preferencesRepository().playerPreferences.value.videoFilterPresets
+    .firstOrNull { it.name == name }
+    ?: error("Filter preset not found: $name")
