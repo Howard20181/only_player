@@ -114,6 +114,10 @@ def read_app_name(project_root: Path) -> str:
         return sanitize_file_part(label)
     resource_name = label.removeprefix("@string/")
     for strings_file in sorted(project_root.glob("**/src/main/res/values/strings.xml")):
+        # 排除隐藏目录与构建产物目录，避免参考源码污染 app 名
+        dir_parts = strings_file.relative_to(project_root).parts[:-1]
+        if any(part.startswith(".") or part == "build" for part in dir_parts):
+            continue
         content = strings_file.read_text(encoding="utf-8")
         string_match = re.search(rf'<string\s+name="{re.escape(resource_name)}"[^>]*>(.*?)</string>', content)
         if string_match:
