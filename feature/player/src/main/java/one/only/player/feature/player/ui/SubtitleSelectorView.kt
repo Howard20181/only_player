@@ -16,10 +16,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.FilledTonalIconButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -56,7 +52,12 @@ import one.only.player.feature.player.ui.panel.PanelActionButton
 import one.only.player.feature.player.ui.panel.PanelOptionList
 import one.only.player.feature.player.ui.panel.PanelOptionRow
 import top.yukonga.miuix.kmp.basic.ButtonDefaults as MiuixButtonDefaults
+import top.yukonga.miuix.kmp.basic.Icon as MiuixIcon
+import top.yukonga.miuix.kmp.basic.IconButton as MiuixIconButton
+import top.yukonga.miuix.kmp.basic.Text as MiuixText
 import top.yukonga.miuix.kmp.basic.TextButton as MiuixTextButton
+import top.yukonga.miuix.kmp.basic.TextField
+import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 @OptIn(UnstableApi::class)
 @Composable
@@ -174,23 +175,25 @@ fun SubtitleSelectorContent(
             onDismissRequest = { isOnlineSubtitleDialogVisible = false },
             title = stringResource(R.string.add_online_subtitle),
             content = {
-                OutlinedTextField(
-                    value = onlineSubtitleUrl,
-                    onValueChange = { onlineSubtitleUrl = it },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .testTag("input_online_subtitle_url"),
-                    label = {
-                        Text(text = stringResource(R.string.online_subtitle_url))
-                    },
-                    placeholder = {
-                        Text(text = stringResource(R.string.online_subtitle_url_example))
-                    },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Uri,
-                    ),
-                )
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TextField(
+                        value = onlineSubtitleUrl,
+                        onValueChange = { onlineSubtitleUrl = it },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("input_online_subtitle_url"),
+                        singleLine = true,
+                        label = stringResource(R.string.online_subtitle_url),
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Uri,
+                        ),
+                    )
+                    MiuixText(
+                        text = stringResource(R.string.online_subtitle_url_example),
+                        color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                        style = MiuixTheme.textStyles.footnote1,
+                    )
+                }
             },
             confirmButton = {
                 MiuixTextButton(
@@ -233,12 +236,11 @@ private fun DelayInput(
     }
 
     NumberChooserInput(
-        title = stringResource(R.string.delay),
+        title = stringResource(R.string.subtitle_delay_seconds),
         value = valueString,
         textFieldTestTag = "input_subtitle_delay",
         decrementButtonTestTag = "btn_subtitle_delay_decrement",
         incrementButtonTestTag = "btn_subtitle_delay_increment",
-        suffix = { Text(text = "sec") },
         onValueChange = { newValue ->
             if (newValue.isBlank()) {
                 valueString = ""
@@ -287,12 +289,11 @@ private fun SpeedInput(
     }
 
     NumberChooserInput(
-        title = stringResource(R.string.speed),
+        title = stringResource(R.string.subtitle_speed_multiplier),
         value = valueString,
         textFieldTestTag = "input_subtitle_speed",
         decrementButtonTestTag = "btn_subtitle_speed_decrement",
         incrementButtonTestTag = "btn_subtitle_speed_increment",
-        suffix = { Text(text = "x") },
         onValueChange = { newValue ->
             if (newValue.isBlank()) {
                 valueString = ""
@@ -335,44 +336,42 @@ private fun NumberChooserInput(
     onValueChange: (String) -> Unit,
     onIncrement: () -> Unit = {},
     onDecrement: () -> Unit = {},
-    suffix: @Composable (() -> Unit)? = null,
 ) {
     Row(
         modifier = modifier,
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        FilledTonalIconButton(
+        MiuixIconButton(
             onClick = { },
             modifier = Modifier
                 .then(decrementButtonTestTag?.let(Modifier::testTag) ?: Modifier)
                 .repeatingClickable(onClick = onDecrement),
         ) {
-            Icon(
+            MiuixIcon(
                 painter = painterResource(R.drawable.ic_remove),
                 contentDescription = null,
             )
         }
-        OutlinedTextField(
-            label = { Text(text = title) },
+        TextField(
             value = value,
             onValueChange = onValueChange,
             modifier = Modifier
                 .weight(1f)
                 .then(textFieldTestTag?.let(Modifier::testTag) ?: Modifier),
-            suffix = suffix,
             singleLine = true,
+            label = title,
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.Decimal,
             ),
         )
-        FilledTonalIconButton(
+        MiuixIconButton(
             onClick = { },
             modifier = Modifier
                 .then(incrementButtonTestTag?.let(Modifier::testTag) ?: Modifier)
                 .repeatingClickable(onClick = onIncrement),
         ) {
-            Icon(
+            MiuixIcon(
                 painter = painterResource(R.drawable.ic_add),
                 contentDescription = null,
             )

@@ -410,6 +410,8 @@
     <string name="reset_settings_confirmation">您確定要將所有設定還原為預設值嗎？</string>
     <string name="reset">重設</string>
     <string name="delay">延遲</string>
+    <string name="subtitle_delay_seconds">延遲（秒）</string>
+    <string name="subtitle_speed_multiplier">速度（倍速）</string>
     <string name="speed">速度</string>
     <string name="search">搜尋</string>
     <string name="search_videos_and_folders">搜尋資料夾與影片</string>

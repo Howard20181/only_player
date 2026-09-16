@@ -422,6 +422,8 @@
     <string name="remove">移除</string>
     <string name="speed">速度</string>
     <string name="delay">延迟</string>
+    <string name="subtitle_delay_seconds">延迟（秒）</string>
+    <string name="subtitle_speed_multiplier">速度（倍速）</string>
     <string name="clear_history">清除历史</string>
     <string name="popular_folders">常用文件夹</string>
     <string name="recent_searches">近期搜索</string>
