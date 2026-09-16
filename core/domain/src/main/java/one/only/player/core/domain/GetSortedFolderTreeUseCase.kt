@@ -13,6 +13,7 @@ import one.only.player.core.model.ApplicationPreferences
 import one.only.player.core.model.Folder
 import one.only.player.core.model.Sort
 import one.only.player.core.model.StoragePath
+import one.only.player.core.model.withSortedContent
 
 class GetSortedFolderTreeUseCase @Inject constructor(
     private val mediaRepository: MediaRepository,
@@ -35,13 +36,8 @@ class GetSortedFolderTreeUseCase @Inject constructor(
         currentFolder.copy(
             mediaList = visibleMedia,
             folderList = folders.getFoldersFor(path = currentFolder.path, preferences = preferences),
-        ).let { folder ->
+        ).withSortedContent(sort).let { folder ->
             if (folderPath == null) folder.getInitialFolderWithContent() else folder
-        }.let { folder ->
-            folder.copy(
-                mediaList = folder.mediaList.sortedWith(sort.videoComparator()),
-                folderList = folder.folderList.sortedWith(sort.folderComparator()),
-            )
         }
     }.flowOn(defaultDispatcher)
 

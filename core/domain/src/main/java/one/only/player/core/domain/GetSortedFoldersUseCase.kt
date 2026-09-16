@@ -12,6 +12,7 @@ import one.only.player.core.data.repository.PreferencesRepository
 import one.only.player.core.model.Folder
 import one.only.player.core.model.Sort
 import one.only.player.core.model.StoragePath
+import one.only.player.core.model.withSortedContent
 
 class GetSortedFoldersUseCase @Inject constructor(
     private val mediaRepository: MediaRepository,
@@ -23,6 +24,7 @@ class GetSortedFoldersUseCase @Inject constructor(
         mediaRepository.getFoldersFlow(),
         preferencesRepository.applicationPreferences,
     ) { folders, preferences ->
+        val sort = Sort(by = preferences.sortBy, order = preferences.sortOrder)
         val visibleDirectories = folders.mapNotNull { folder ->
             if (preferences.isPathExcluded(StoragePath.of(folder.path))) {
                 return@mapNotNull null
@@ -35,10 +37,9 @@ class GetSortedFoldersUseCase @Inject constructor(
                 return@mapNotNull null
             }
 
-            folder.copy(mediaList = visibleMedia)
+            folder.copy(mediaList = visibleMedia).withSortedContent(sort)
         }
 
-        val sort = Sort(by = preferences.sortBy, order = preferences.sortOrder)
         visibleDirectories.sortedWith(sort.folderComparator())
     }.flowOn(defaultDispatcher)
 }
