@@ -8,6 +8,7 @@ import one.only.player.core.model.PlayerPreferences
 internal class AudioEffectsCoordinator {
 
     val volumeNormalizationAudioProcessor = VolumeNormalizationAudioProcessor()
+    val equalizerAudioProcessor = EqualizerAudioProcessor()
 
     private var loudnessEnhancer: LoudnessEnhancer? = null
     var requestedVolumeGain: Int = 0
@@ -67,6 +68,11 @@ internal class AudioEffectsCoordinator {
     fun applyVolumeNormalization(isEnabled: Boolean) {
         volumeNormalizationAudioProcessor.isEnabled = isEnabled
         Logger.debug(TAG, "Apply volume normalization: enabled=$isEnabled")
+    }
+
+    fun applyEqualizer(settings: AudioEqualizerSettings) {
+        equalizerAudioProcessor.applySettings(settings)
+        Logger.debug(TAG, "Apply audio equalizer: enabled=${settings.isEnabled} levels=${settings.bandLevelsDb}")
     }
 
     private fun applyLoudnessEnhancerGain() {

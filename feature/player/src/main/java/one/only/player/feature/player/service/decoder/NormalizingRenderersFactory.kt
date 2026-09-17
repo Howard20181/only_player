@@ -20,7 +20,7 @@ import io.github.anilbeesetti.nextlib.media3ext.ffdecoder.NextRenderersFactory
 @OptIn(UnstableApi::class)
 class NormalizingRenderersFactory(
     context: Context,
-    private val volumeNormalizationAudioProcessor: AudioProcessor,
+    private val audioProcessors: Array<AudioProcessor>,
     private val shouldUseAudioExtensionFallback: Boolean,
 ) : NextRenderersFactory(context) {
 
@@ -70,7 +70,7 @@ class NormalizingRenderersFactory(
     ): AudioSink = DefaultAudioSink.Builder(context)
         .setEnableFloatOutput(enableFloatOutput)
         .setEnableAudioOutputPlaybackParameters(enableAudioTrackPlaybackParams)
-        .setAudioProcessors(arrayOf(volumeNormalizationAudioProcessor))
+        .setAudioProcessors(audioProcessors)
         .build()
 
     override fun buildAudioRenderers(

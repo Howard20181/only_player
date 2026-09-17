@@ -134,6 +134,7 @@ import one.only.player.feature.player.model.extractVideoChapters
 import one.only.player.feature.player.model.toBundle
 import one.only.player.feature.player.service.artwork.PlaybackArtworkLoader
 import one.only.player.feature.player.service.audio.AudioEffectsCoordinator
+import one.only.player.feature.player.service.audio.toAudioEqualizerSettings
 import one.only.player.feature.player.service.audio.toPlaybackAudioAttributes
 import one.only.player.feature.player.service.decoder.DolbyPreferringMediaCodecSelector
 import one.only.player.feature.player.service.decoder.NormalizingRenderersFactory
@@ -1669,7 +1670,10 @@ class PlayerService : MediaSessionService() {
         )
         val renderersFactory = NormalizingRenderersFactory(
             context = applicationContext,
-            volumeNormalizationAudioProcessor = audioEffectsCoordinator.volumeNormalizationAudioProcessor,
+            audioProcessors = arrayOf(
+                audioEffectsCoordinator.volumeNormalizationAudioProcessor,
+                audioEffectsCoordinator.equalizerAudioProcessor,
+            ),
             shouldUseAudioExtensionFallback = shouldUseAudioExtensionFallback,
         )
             .setMediaCodecSelector(DolbyPreferringMediaCodecSelector)
@@ -1744,6 +1748,13 @@ class PlayerService : MediaSessionService() {
                 .distinctUntilChanged { old, new -> old.isVolumeNormalizationEnabled == new.isVolumeNormalizationEnabled }
                 .collect { preferences ->
                     audioEffectsCoordinator.applyVolumeNormalization(preferences.isVolumeNormalizationEnabled)
+                }
+        }
+        serviceScope.launch {
+            preferencesRepository.playerPreferences
+                .distinctUntilChanged { old, new -> old.toAudioEqualizerSettings() == new.toAudioEqualizerSettings() }
+                .collect { preferences ->
+                    audioEffectsCoordinator.applyEqualizer(preferences.toAudioEqualizerSettings())
                 }
         }
         serviceScope.launch {

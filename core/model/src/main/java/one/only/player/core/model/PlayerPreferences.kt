@@ -68,6 +68,9 @@ data class PlayerPreferences(
     val maxInitialPlayerVolumePercentage: Int = DEFAULT_MAX_INITIAL_PLAYER_VOLUME_PERCENTAGE,
     val isVolumeNormalizationEnabled: Boolean = false,
     val isSpatialAudioEnabled: Boolean = true,
+    val shouldApplyAudioEqualizer: Boolean = false,
+    val audioEqualizerBandLevels: List<Int> = DEFAULT_AUDIO_EQUALIZER_BAND_LEVELS,
+    val audioEqualizerPresets: List<AudioEqualizerPreset> = emptyList(),
 
     // 字幕偏好
     val isSubtitleAutoLoadEnabled: Boolean = true,
@@ -133,6 +136,10 @@ data class PlayerPreferences(
         const val MIN_SUBTITLE_SCALE = 0.5f
         const val MAX_SUBTITLE_SCALE = 3f
         const val SUBTITLE_SCALE_STEP = 0.05f
+        const val MIN_AUDIO_EQUALIZER_GAIN_DB = -12
+        const val MAX_AUDIO_EQUALIZER_GAIN_DB = 12
+        const val DEFAULT_AUDIO_EQUALIZER_GAIN_DB = 0
+        val DEFAULT_AUDIO_EQUALIZER_BAND_LEVELS: List<Int> = List(AudioEqualizerBand.entries.size) { DEFAULT_AUDIO_EQUALIZER_GAIN_DB }
         const val DEFAULT_CONTROLLER_AUTO_HIDE_TIMEOUT = 4
         const val DEFAULT_PLAYER_VOLUME_PERCENTAGE = 100
         const val MAX_PLAYER_VOLUME_PERCENTAGE = 200
