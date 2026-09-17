@@ -9,7 +9,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.testTag
@@ -18,10 +20,17 @@ import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlin.math.roundToInt
+import one.only.player.core.model.AudioEqualizerBand
 import one.only.player.core.model.PlayerPreferences
+import one.only.player.core.model.equalizerBandLevel
+import one.only.player.core.model.withAudioEqualizerBandLevel
 import one.only.player.core.ui.R
+import one.only.player.core.ui.components.AUDIO_EQUALIZER_GAIN_INT_RANGE
+import one.only.player.core.ui.components.AUDIO_EQUALIZER_GAIN_RANGE
 import one.only.player.core.ui.components.AppScaffold
 import one.only.player.core.ui.components.AppTopAppBar
+import one.only.player.core.ui.components.AudioEqualizerPresetPickerDialog
 import one.only.player.core.ui.components.ClickablePreferenceItem
 import one.only.player.core.ui.components.PageContentTopPadding
 import one.only.player.core.ui.components.PreferenceGroup
@@ -29,7 +38,11 @@ import one.only.player.core.ui.components.PreferenceSlider
 import one.only.player.core.ui.components.PreferenceSwitch
 import one.only.player.core.ui.components.RadioTextButton
 import one.only.player.core.ui.components.ResetIconButton
+import one.only.player.core.ui.components.SavePresetNameDialog
 import one.only.player.core.ui.components.SettingsGroupGap
+import one.only.player.core.ui.components.frequencyLabel
+import one.only.player.core.ui.components.signedDecibels
+import one.only.player.core.ui.components.sliderStepCount
 import one.only.player.core.ui.designsystem.AppIcons
 import one.only.player.core.ui.extensions.withBottomFallback
 import one.only.player.core.ui.theme.OnlyPlayerTheme
@@ -204,6 +217,11 @@ private fun AudioPreferencesContent(
                     onClick = { onEvent(AudioPreferencesUiEvent.ToggleVolumeBoost) },
                 )
             }
+
+            AudioEqualizerSettings(
+                preferences = uiState.preferences,
+                onEvent = onEvent,
+            )
         }
 
         uiState.showDialog?.let { showDialog ->
@@ -226,7 +244,103 @@ private fun AudioPreferencesContent(
                         }
                     }
                 }
+
+                AudioPreferenceDialog.AudioEqualizerPresets -> {
+                    AudioEqualizerPresetPickerDialog(
+                        preferences = uiState.preferences,
+                        onApplyBuiltInPreset = {
+                            onEvent(AudioPreferencesUiEvent.ApplyAudioEqualizerBuiltInPreset(it))
+                            onEvent(AudioPreferencesUiEvent.ShowDialog(null))
+                        },
+                        onApplyPreset = {
+                            onEvent(AudioPreferencesUiEvent.ApplyAudioEqualizerPreset(it))
+                            onEvent(AudioPreferencesUiEvent.ShowDialog(null))
+                        },
+                        onDeletePreset = { onEvent(AudioPreferencesUiEvent.DeleteAudioEqualizerPreset(it)) },
+                        onDismissRequest = { onEvent(AudioPreferencesUiEvent.ShowDialog(null)) },
+                    )
+                }
+
+                AudioPreferenceDialog.SaveAudioEqualizerPreset -> {
+                    SavePresetNameDialog(
+                        title = stringResource(R.string.save_current_as_audio_equalizer_preset),
+                        presetNameLabel = stringResource(R.string.audio_equalizer_preset_name),
+                        dialogTestTag = "dialog_save_audio_equalizer_preset",
+                        inputTestTag = "input_equalizer_preset_name",
+                        confirmTestTag = "btn_save_equalizer_preset",
+                        onDismissRequest = { onEvent(AudioPreferencesUiEvent.ShowDialog(null)) },
+                        onSavePreset = {
+                            onEvent(AudioPreferencesUiEvent.SaveAudioEqualizerPreset(it))
+                            onEvent(AudioPreferencesUiEvent.ShowDialog(null))
+                        },
+                    )
+                }
             }
+        }
+    }
+}
+
+@Composable
+private fun AudioEqualizerSettings(
+    preferences: PlayerPreferences,
+    onEvent: (AudioPreferencesUiEvent) -> Unit,
+) {
+    // 拖动过程中只更新本地草稿，滑动结束才提交，避免逐帧写入
+    var draftPreferences by remember(preferences) { mutableStateOf(preferences) }
+
+    PreferenceGroup {
+        PreferenceSwitch(
+            modifier = Modifier.testTag("switch_settings_audio_equalizer"),
+            title = stringResource(R.string.enable_audio_equalizer),
+            description = stringResource(R.string.enable_audio_equalizer_description),
+            icon = AppIcons.Equalizer,
+            isChecked = preferences.shouldApplyAudioEqualizer,
+            onClick = { onEvent(AudioPreferencesUiEvent.ToggleAudioEqualizer) },
+        )
+        ClickablePreferenceItem(
+            modifier = Modifier.testTag("item_settings_audio_equalizer_presets"),
+            title = stringResource(R.string.audio_equalizer_presets),
+            icon = AppIcons.Equalizer,
+            onClick = { onEvent(AudioPreferencesUiEvent.ShowDialog(AudioPreferenceDialog.AudioEqualizerPresets)) },
+        )
+        ClickablePreferenceItem(
+            modifier = Modifier.testTag("item_settings_save_audio_equalizer_preset"),
+            title = stringResource(R.string.save_current_as_audio_equalizer_preset),
+            icon = AppIcons.Save,
+            onClick = { onEvent(AudioPreferencesUiEvent.ShowDialog(AudioPreferenceDialog.SaveAudioEqualizerPreset)) },
+        )
+        AudioEqualizerBand.entries.forEach { band ->
+            val levelDb = draftPreferences.equalizerBandLevel(band)
+            PreferenceSlider(
+                modifier = Modifier.testTag("item_settings_audio_equalizer_band_${band.ordinal}"),
+                title = band.frequencyLabel(),
+                description = stringResource(R.string.decibel_value, signedDecibels(levelDb)),
+                isEnabled = preferences.shouldApplyAudioEqualizer,
+                value = levelDb.toFloat(),
+                valueRange = AUDIO_EQUALIZER_GAIN_RANGE,
+                steps = AUDIO_EQUALIZER_GAIN_INT_RANGE.sliderStepCount(),
+                onValueChange = { rawValue ->
+                    draftPreferences = draftPreferences.withAudioEqualizerBandLevel(band, rawValue.roundToInt())
+                },
+                onValueChangeFinished = {
+                    onEvent(AudioPreferencesUiEvent.UpdateAudioEqualizerBand(band, draftPreferences.equalizerBandLevel(band)))
+                },
+                trailingContent = {
+                    ResetIconButton(
+                        modifier = Modifier.testTag("btn_reset_settings_audio_equalizer_band_${band.ordinal}"),
+                        enabled = preferences.shouldApplyAudioEqualizer,
+                        onClick = {
+                            onEvent(
+                                AudioPreferencesUiEvent.UpdateAudioEqualizerBand(
+                                    band,
+                                    PlayerPreferences.DEFAULT_AUDIO_EQUALIZER_GAIN_DB,
+                                ),
+                            )
+                        },
+                        contentDescription = stringResource(R.string.reset_audio_equalizer_band, band.frequencyLabel()),
+                    )
+                },
+            )
         }
     }
 }
