@@ -28,6 +28,8 @@ import one.only.player.core.data.repository.SubtitleFontRepository
 import one.only.player.core.data.repository.buildRemotePlaybackStateKey
 import one.only.player.core.domain.GetSortedPlaylistUseCase
 import one.only.player.core.model.ApplicationPreferences
+import one.only.player.core.model.AudioEqualizerBuiltInPreset
+import one.only.player.core.model.AudioEqualizerPreset
 import one.only.player.core.model.DecoderPriority
 import one.only.player.core.model.LastPlayerScreenOrientation
 import one.only.player.core.model.LoopMode
@@ -36,7 +38,13 @@ import one.only.player.core.model.PlayerPreferences
 import one.only.player.core.model.Video
 import one.only.player.core.model.VideoContentScale
 import one.only.player.core.model.VideoFilterPreset
+import one.only.player.core.model.toAudioEqualizerPreset
 import one.only.player.core.model.toVideoFilterPreset
+import one.only.player.core.model.withAudioEqualizerBuiltInPresetApplied
+import one.only.player.core.model.withAudioEqualizerFrom
+import one.only.player.core.model.withAudioEqualizerPresetApplied
+import one.only.player.core.model.withAudioEqualizerPresetDeleted
+import one.only.player.core.model.withAudioEqualizerPresetSaved
 import one.only.player.core.model.withSubtitleStyleFrom
 import one.only.player.core.model.withVideoFilterPresetApplied
 import one.only.player.core.model.withVideoFilterPresetDeleted
@@ -239,6 +247,51 @@ class PlayerViewModel @Inject constructor(
         viewModelScope.launch {
             preferencesRepository.updatePlayerPreferences {
                 it.withVideoFilterPresetDeleted(preset)
+            }
+        }
+    }
+
+    fun updateAudioEqualizer(preferences: PlayerPreferences) {
+        Logger.debug(TAG, "Update audio equalizer from player: enabled=${preferences.shouldApplyAudioEqualizer} levels=${preferences.audioEqualizerBandLevels}")
+        viewModelScope.launch {
+            preferencesRepository.updatePlayerPreferences {
+                it.withAudioEqualizerFrom(preferences)
+            }
+        }
+    }
+
+    fun applyAudioEqualizerBuiltInPreset(preset: AudioEqualizerBuiltInPreset) {
+        Logger.debug(TAG, "Apply built-in equalizer preset from player: preset=$preset")
+        viewModelScope.launch {
+            preferencesRepository.updatePlayerPreferences {
+                it.withAudioEqualizerBuiltInPresetApplied(preset)
+            }
+        }
+    }
+
+    fun applyAudioEqualizerPreset(preset: AudioEqualizerPreset) {
+        Logger.debug(TAG, "Apply equalizer preset from player: name=${preset.name}")
+        viewModelScope.launch {
+            preferencesRepository.updatePlayerPreferences {
+                it.withAudioEqualizerPresetApplied(preset)
+            }
+        }
+    }
+
+    fun saveAudioEqualizerPreset(name: String) {
+        Logger.debug(TAG, "Save equalizer preset from player: name=$name")
+        viewModelScope.launch {
+            preferencesRepository.updatePlayerPreferences {
+                it.withAudioEqualizerPresetSaved(it.toAudioEqualizerPreset(name, System.currentTimeMillis()))
+            }
+        }
+    }
+
+    fun deleteAudioEqualizerPreset(preset: AudioEqualizerPreset) {
+        Logger.debug(TAG, "Delete equalizer preset from player: name=${preset.name}")
+        viewModelScope.launch {
+            preferencesRepository.updatePlayerPreferences {
+                it.withAudioEqualizerPresetDeleted(preset)
             }
         }
     }

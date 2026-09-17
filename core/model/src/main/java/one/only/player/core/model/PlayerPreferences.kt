@@ -262,6 +262,7 @@ enum class PlayerControl {
     PLAYLIST,
     PLAYBACK_SPEED,
     AUDIO,
+    AUDIO_EQUALIZER,
     SUBTITLE,
     PREVIOUS,
     PLAY_PAUSE,

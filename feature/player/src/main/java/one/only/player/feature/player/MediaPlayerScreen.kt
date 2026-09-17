@@ -115,7 +115,9 @@ import one.only.player.core.model.playerControls
 import one.only.player.core.model.slotOf
 import one.only.player.core.ui.R as coreUiR
 import one.only.player.core.ui.components.AppDialog
-import one.only.player.core.ui.components.SaveVideoFilterPresetDialog
+import one.only.player.core.ui.components.AudioEqualizerPanel
+import one.only.player.core.ui.components.AudioEqualizerPresetListContent
+import one.only.player.core.ui.components.SavePresetNameDialog
 import one.only.player.core.ui.components.VideoFilterPresetListContent
 import one.only.player.core.ui.components.VideoFiltersPanel
 import one.only.player.core.ui.designsystem.AppIcons
@@ -391,6 +393,7 @@ internal fun MediaPlayerScreen(
     var subtitleStylePreviewPreferences by remember { mutableStateOf<PlayerPreferences?>(null) }
     var isVideoMirrored by remember { mutableStateOf(false) }
     var isSaveFilterPresetDialogVisible by remember { mutableStateOf(false) }
+    var isSaveEqualizerPresetDialogVisible by remember { mutableStateOf(false) }
     val activePlayerPreferences = subtitleStylePreviewPreferences ?: playerPreferences
     val videoFiltersUnavailableMessage = stringResource(coreUiR.string.video_filters_unavailable_software_decoder)
     fun updateSubtitleStyle(preferences: PlayerPreferences) {
@@ -419,6 +422,9 @@ internal fun MediaPlayerScreen(
     fun updateVideoFilters(preferences: PlayerPreferences) {
         (player as? androidx.media3.session.MediaController)?.previewVideoFilters(preferences)
         viewModel.updateVideoFilters(preferences)
+    }
+    fun updateAudioEqualizer(preferences: PlayerPreferences) {
+        viewModel.updateAudioEqualizer(preferences)
     }
     fun enterPictureInPicture() {
         when (playerPreferences.pictureInPictureMode) {
@@ -732,6 +738,8 @@ internal fun MediaPlayerScreen(
             PlayerDebugCommandBridge.ACTION_SHOW_DECODER -> openOverlayPanel(MenuRoute.Decoder)
 
             PlayerDebugCommandBridge.ACTION_SHOW_VIDEO_FILTERS -> showVideoFilters()
+
+            PlayerDebugCommandBridge.ACTION_SHOW_AUDIO_EQUALIZER -> openOverlayPanel(MenuRoute.AudioEqualizer)
 
             PlayerDebugCommandBridge.ACTION_PIP -> {
                 enterPictureInPicture()
@@ -1079,31 +1087,58 @@ internal fun MediaPlayerScreen(
                     if (canGoBack) popMenuRoute() else dismissOverlay()
                 },
                 onDismiss = ::dismissOverlay,
-                trailingActions = if (currentRoute == MenuRoute.VideoFilters) {
-                    {
-                        MiuixIconButton(
-                            modifier = Modifier.testTag("btn_save_video_filter_preset"),
-                            onClick = { isSaveFilterPresetDialogVisible = true },
-                        ) {
-                            MiuixIcon(
-                                imageVector = AppIcons.Save,
-                                contentDescription = stringResource(coreUiR.string.save_video_filter_preset),
-                                tint = menuPanelTokens.contentColor,
-                            )
-                        }
-                        MiuixIconButton(
-                            modifier = Modifier.testTag("btn_video_filter_presets"),
-                            onClick = { navigateToMenuRoute(MenuRoute.VideoFilterPresets) },
-                        ) {
-                            MiuixIcon(
-                                imageVector = AppIcons.ColorFilter,
-                                contentDescription = stringResource(coreUiR.string.video_filter_presets),
-                                tint = menuPanelTokens.contentColor,
-                            )
+                trailingActions = when (currentRoute) {
+                    MenuRoute.VideoFilters -> {
+                        {
+                            MiuixIconButton(
+                                modifier = Modifier.testTag("btn_save_video_filter_preset"),
+                                onClick = { isSaveFilterPresetDialogVisible = true },
+                            ) {
+                                MiuixIcon(
+                                    imageVector = AppIcons.Save,
+                                    contentDescription = stringResource(coreUiR.string.save_video_filter_preset),
+                                    tint = menuPanelTokens.contentColor,
+                                )
+                            }
+                            MiuixIconButton(
+                                modifier = Modifier.testTag("btn_video_filter_presets"),
+                                onClick = { navigateToMenuRoute(MenuRoute.VideoFilterPresets) },
+                            ) {
+                                MiuixIcon(
+                                    imageVector = AppIcons.ColorFilter,
+                                    contentDescription = stringResource(coreUiR.string.video_filter_presets),
+                                    tint = menuPanelTokens.contentColor,
+                                )
+                            }
                         }
                     }
-                } else {
-                    null
+
+                    MenuRoute.AudioEqualizer -> {
+                        {
+                            MiuixIconButton(
+                                modifier = Modifier.testTag("btn_save_audio_equalizer_preset"),
+                                onClick = { isSaveEqualizerPresetDialogVisible = true },
+                            ) {
+                                MiuixIcon(
+                                    imageVector = AppIcons.Save,
+                                    contentDescription = stringResource(coreUiR.string.save_audio_equalizer_preset),
+                                    tint = menuPanelTokens.contentColor,
+                                )
+                            }
+                            MiuixIconButton(
+                                modifier = Modifier.testTag("btn_audio_equalizer_presets"),
+                                onClick = { navigateToMenuRoute(MenuRoute.AudioEqualizerPresets) },
+                            ) {
+                                MiuixIcon(
+                                    imageVector = AppIcons.Equalizer,
+                                    contentDescription = stringResource(coreUiR.string.audio_equalizer_presets),
+                                    tint = menuPanelTokens.contentColor,
+                                )
+                            }
+                        }
+                    }
+
+                    else -> null
                 },
             ) { route ->
                 when (route) {
@@ -1189,6 +1224,29 @@ internal fun MediaPlayerScreen(
                             preferences = playerPreferences,
                             onApplyPreset = viewModel::applyVideoFilterPreset,
                             onDeletePreset = viewModel::deleteVideoFilterPreset,
+                        )
+                    }
+
+                    MenuRoute.AudioEqualizer -> AudioEqualizerPanel(
+                        modifier = Modifier.fillMaxSize(),
+                        preferences = playerPreferences,
+                        onPreferencesChange = ::updateAudioEqualizer,
+                    )
+                    MenuRoute.AudioEqualizerPresets -> Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                            .padding(horizontal = 24.dp)
+                            .padding(bottom = 24.dp),
+                    ) {
+                        AudioEqualizerPresetListContent(
+                            preferences = playerPreferences,
+                            onApplyBuiltInPreset = { preset ->
+                                viewModel.applyAudioEqualizerBuiltInPreset(preset)
+                                popMenuRoute()
+                            },
+                            onApplyPreset = viewModel::applyAudioEqualizerPreset,
+                            onDeletePreset = viewModel::deleteAudioEqualizerPreset,
                         )
                     }
 
@@ -1286,8 +1344,29 @@ internal fun MediaPlayerScreen(
         )
     }
 
+    if (isSaveEqualizerPresetDialogVisible) {
+        SavePresetNameDialog(
+            title = stringResource(coreUiR.string.save_current_as_audio_equalizer_preset),
+            presetNameLabel = stringResource(coreUiR.string.audio_equalizer_preset_name),
+            dialogTestTag = "dialog_save_audio_equalizer_preset",
+            inputTestTag = "input_equalizer_preset_name",
+            confirmTestTag = "btn_save_equalizer_preset",
+            onDismissRequest = { isSaveEqualizerPresetDialogVisible = false },
+            onSavePreset = { name ->
+                isSaveEqualizerPresetDialogVisible = false
+                viewModel.saveAudioEqualizerPreset(name)
+            },
+            shouldKeepSystemBarsHidden = true,
+        )
+    }
+
     if (isSaveFilterPresetDialogVisible) {
-        SaveVideoFilterPresetDialog(
+        SavePresetNameDialog(
+            title = stringResource(coreUiR.string.save_current_as_video_filter_preset),
+            presetNameLabel = stringResource(coreUiR.string.video_filter_preset_name),
+            dialogTestTag = "dialog_save_video_filter_preset",
+            inputTestTag = "input_filter_preset_name",
+            confirmTestTag = "btn_save_filter_preset",
             onDismissRequest = { isSaveFilterPresetDialogVisible = false },
             onSavePreset = { name ->
                 isSaveFilterPresetDialogVisible = false
@@ -1353,6 +1432,8 @@ private fun titleForMenuRoute(
     MenuRoute.VideoInfo -> stringResource(coreUiR.string.video_info)
     MenuRoute.VideoFilters -> stringResource(coreUiR.string.video_filters)
     MenuRoute.VideoFilterPresets -> stringResource(coreUiR.string.video_filter_presets)
+    MenuRoute.AudioEqualizer -> stringResource(coreUiR.string.audio_equalizer)
+    MenuRoute.AudioEqualizerPresets -> stringResource(coreUiR.string.audio_equalizer_presets)
     MenuRoute.Playlist -> stringResource(coreUiR.string.now_playing_with_count, playlistItemCount)
     MenuRoute.SleepTimer -> stringResource(coreUiR.string.sleep_timer)
     MenuRoute.Decoder -> stringResource(coreUiR.string.decoder_priority)

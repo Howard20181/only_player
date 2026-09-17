@@ -41,6 +41,8 @@ sealed interface MenuRoute {
     data object VideoInfo : MenuRoute
     data object VideoFilters : MenuRoute
     data object VideoFilterPresets : MenuRoute
+    data object AudioEqualizer : MenuRoute
+    data object AudioEqualizerPresets : MenuRoute
     data object PlaybackMarks : MenuRoute
     data object Chapters : MenuRoute
 }

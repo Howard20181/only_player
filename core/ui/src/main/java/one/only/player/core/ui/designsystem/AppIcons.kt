@@ -37,6 +37,7 @@ object AppIcons {
     val DriveFileMove: ImageVector get() = MingCuteDriveFileMove
     val Drop: ImageVector get() = MingCuteDrop
     val Edit: ImageVector get() = MingCuteEdit
+    val Equalizer: ImageVector get() = MingCuteSignal
     val ExpandMore: ImageVector get() = MingCuteExpandMore
     val Exposure: ImageVector get() = MingCuteExposure
     val ExtraSettings: ImageVector get() = MingCuteExtraSettings

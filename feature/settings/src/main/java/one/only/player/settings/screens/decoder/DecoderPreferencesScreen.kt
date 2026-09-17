@@ -33,7 +33,7 @@ import one.only.player.core.ui.components.PreferenceSlider
 import one.only.player.core.ui.components.PreferenceSwitch
 import one.only.player.core.ui.components.RadioTextButton
 import one.only.player.core.ui.components.ResetIconButton
-import one.only.player.core.ui.components.SaveVideoFilterPresetDialog
+import one.only.player.core.ui.components.SavePresetNameDialog
 import one.only.player.core.ui.components.SettingsGroupGap
 import one.only.player.core.ui.components.VIDEO_BRIGHTNESS_INT_RANGE
 import one.only.player.core.ui.components.VIDEO_CONTRAST_INT_RANGE
@@ -157,7 +157,12 @@ private fun DecoderPreferencesContent(
                     )
                 }
                 DecoderPreferenceDialog.SaveVideoFilterPreset -> {
-                    SaveVideoFilterPresetDialog(
+                    SavePresetNameDialog(
+                        title = stringResource(R.string.save_current_as_video_filter_preset),
+                        presetNameLabel = stringResource(R.string.video_filter_preset_name),
+                        dialogTestTag = "dialog_save_video_filter_preset",
+                        inputTestTag = "input_filter_preset_name",
+                        confirmTestTag = "btn_save_filter_preset",
                         onDismissRequest = { onEvent(DecoderPreferencesUiEvent.ShowDialog(null)) },
                         onSavePreset = {
                             onEvent(DecoderPreferencesUiEvent.SaveVideoFilterPreset(it))

@@ -203,6 +203,7 @@ internal val UI_PLAYER_ACTIONS = setOf(
     PlayerDebugCommandBridge.ACTION_SHOW_SCALE,
     PlayerDebugCommandBridge.ACTION_SHOW_DECODER,
     PlayerDebugCommandBridge.ACTION_SHOW_VIDEO_FILTERS,
+    PlayerDebugCommandBridge.ACTION_SHOW_AUDIO_EQUALIZER,
     PlayerDebugCommandBridge.ACTION_PIP,
     PlayerDebugCommandBridge.ACTION_SCREENSHOT,
     PlayerDebugCommandBridge.ACTION_BACKGROUND,
