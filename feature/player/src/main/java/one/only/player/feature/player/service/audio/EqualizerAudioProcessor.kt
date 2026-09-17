@@ -8,8 +8,12 @@ import androidx.media3.common.audio.BaseAudioProcessor
 import androidx.media3.common.util.UnstableApi
 import java.nio.ByteBuffer
 import kotlin.math.PI
+import kotlin.math.abs
 import kotlin.math.cos
+import kotlin.math.exp
+import kotlin.math.min
 import kotlin.math.pow
+import kotlin.math.roundToInt
 import kotlin.math.sin
 import one.only.player.core.model.AudioEqualizerBand
 
@@ -21,9 +25,12 @@ internal class EqualizerAudioProcessor : BaseAudioProcessor() {
     private var settings: AudioEqualizerSettings = AudioEqualizerSettings()
 
     private var channelCount = 0
-    private var filterState = FloatArray(0)
-    private val coefficients = FloatArray(BAND_COUNT * COEFFICIENTS_PER_BAND)
+    private var filterState = DoubleArray(0)
+    private val coefficients = DoubleArray(BAND_COUNT * COEFFICIENTS_PER_BAND)
+    private var processedSamples = DoubleArray(0)
     private var appliedLevels: List<Int>? = null
+    private var isBypassing = true
+    private var outputGain = 1.0
 
     fun applySettings(settings: AudioEqualizerSettings) {
         this.settings = settings
@@ -33,10 +40,6 @@ internal class EqualizerAudioProcessor : BaseAudioProcessor() {
         if (inputAudioFormat.encoding != C.ENCODING_PCM_16BIT && inputAudioFormat.encoding != C.ENCODING_PCM_FLOAT) {
             return AudioFormat.NOT_SET
         }
-        channelCount = inputAudioFormat.channelCount
-        filterState = FloatArray(BAND_COUNT * channelCount * STATE_PER_CHANNEL)
-        // 采样率或声道布局换了，系数必须按新格式重算
-        appliedLevels = null
         return inputAudioFormat
     }
 
@@ -45,69 +48,74 @@ internal class EqualizerAudioProcessor : BaseAudioProcessor() {
         if (size <= 0) return
         val outputBuffer = replaceOutputBuffer(size)
         val currentSettings = settings
-        if (currentSettings.isBypass || !updateCoefficients(currentSettings)) {
+        if (currentSettings.isBypass) {
+            if (!isBypassing) clearFilterState()
+            isBypassing = true
             outputBuffer.put(inputBuffer)
             outputBuffer.flip()
             return
         }
 
-        when (inputAudioFormat.encoding) {
-            C.ENCODING_PCM_16BIT -> processShortPcm(inputBuffer, outputBuffer)
-            C.ENCODING_PCM_FLOAT -> processFloatPcm(inputBuffer, outputBuffer)
-            else -> outputBuffer.put(inputBuffer)
-        }
+        isBypassing = false
+        updateCoefficients(currentSettings)
+        processPcm(inputBuffer, outputBuffer)
         outputBuffer.flip()
     }
 
     override fun onFlush(streamMetadata: StreamMetadata) {
+        // configure 只协商下一段格式；旧音频排空后，flush 才启用新格式
+        channelCount = inputAudioFormat.channelCount
+        filterState = DoubleArray(BAND_COUNT * channelCount.coerceAtLeast(0) * STATE_PER_CHANNEL)
+        appliedLevels = null
+        isBypassing = true
         clearFilterState()
     }
 
     override fun onReset() {
-        clearFilterState()
+        channelCount = 0
+        filterState = DoubleArray(0)
+        processedSamples = DoubleArray(0)
+        appliedLevels = null
     }
 
     private fun clearFilterState() {
-        if (filterState.isNotEmpty()) filterState.fill(0f)
+        filterState.fill(0.0)
+        outputGain = 1.0
     }
 
-    private fun processShortPcm(
+    private fun processPcm(
         inputBuffer: ByteBuffer,
         outputBuffer: ByteBuffer,
     ) {
-        val bytesPerFrame = BYTES_PER_SHORT * channelCount
-        val frameCount = inputBuffer.remaining() / bytesPerFrame
-        repeat(frameCount) {
-            for (channel in 0 until channelCount) {
-                val sample = inputBuffer.short / SHORT_SCALE
-                val filtered = filterSample(sample, channel)
-                outputBuffer.putShort((filtered * SHORT_SCALE).toInt().coerceIn(SHORT_MIN, SHORT_MAX).toShort())
-            }
+        val isFloatPcm = inputAudioFormat.encoding == C.ENCODING_PCM_FLOAT
+        val sampleCount = inputBuffer.remaining() / if (isFloatPcm) BYTES_PER_FLOAT else BYTES_PER_SHORT
+        if (processedSamples.size < sampleCount) processedSamples = DoubleArray(sampleCount)
+        var peak = 0.0
+        for (index in 0 until sampleCount) {
+            val sample = if (isFloatPcm) inputBuffer.float.toDouble() else inputBuffer.short / SHORT_SCALE
+            val filtered = filterSample(sample, index % channelCount)
+            processedSamples[index] = filtered
+            peak = maxOf(peak, abs(filtered))
         }
-        // 尾部不足一帧的字节原样透传，避免丢样本
-        while (inputBuffer.hasRemaining()) outputBuffer.put(inputBuffer.get())
-    }
 
-    private fun processFloatPcm(
-        inputBuffer: ByteBuffer,
-        outputBuffer: ByteBuffer,
-    ) {
-        val bytesPerFrame = BYTES_PER_FLOAT * channelCount
-        val frameCount = inputBuffer.remaining() / bytesPerFrame
-        repeat(frameCount) {
-            for (channel in 0 until channelCount) {
-                val sample = inputBuffer.float
-                val filtered = filterSample(sample, channel)
-                outputBuffer.putFloat(filtered.coerceIn(FLOAT_MIN, FLOAT_MAX))
+        // 整块共用峰值限制，声道间保持比例；恢复增益时缓慢释放，避免硬削波
+        val targetGain = if (peak > MAX_OUTPUT_LEVEL) MAX_OUTPUT_LEVEL / peak else 1.0
+        val release = exp(-1.0 / (inputAudioFormat.sampleRate * GAIN_RELEASE_SECONDS))
+        for (index in 0 until sampleCount) {
+            if (index % channelCount == 0) outputGain = min(targetGain, 1.0 - (1.0 - outputGain) * release)
+            val sample = processedSamples[index] * outputGain
+            if (isFloatPcm) {
+                outputBuffer.putFloat(sample.toFloat())
+            } else {
+                outputBuffer.putShort((sample * SHORT_SCALE).roundToInt().toShort())
             }
         }
-        while (inputBuffer.hasRemaining()) outputBuffer.put(inputBuffer.get())
     }
 
     private fun filterSample(
-        sample: Float,
+        sample: Double,
         channel: Int,
-    ): Float {
+    ): Double {
         var value = sample
         for (band in 0 until BAND_COUNT) {
             val coefficientOffset = band * COEFFICIENTS_PER_BAND
@@ -128,11 +136,10 @@ internal class EqualizerAudioProcessor : BaseAudioProcessor() {
         return value
     }
 
-    // 返回是否可继续滤波；曲线变化时不重置状态，避免拖动滑杆时效果被反复清零
-    private fun updateCoefficients(currentSettings: AudioEqualizerSettings): Boolean {
+    // 曲线变化时保留滤波状态，参数在进入处理器前已归一为十段
+    private fun updateCoefficients(currentSettings: AudioEqualizerSettings) {
         val levels = currentSettings.bandLevelsDb
-        if (levels == appliedLevels) return true
-        if (levels.size < BAND_COUNT) return false
+        if (levels == appliedLevels) return
         appliedLevels = levels
 
         val sampleRate = inputAudioFormat.sampleRate
@@ -144,7 +151,6 @@ internal class EqualizerAudioProcessor : BaseAudioProcessor() {
                 sampleRate = sampleRate,
             )
         }
-        return true
     }
 
     private fun computeBandCoefficients(
@@ -155,9 +161,9 @@ internal class EqualizerAudioProcessor : BaseAudioProcessor() {
     ) {
         val offset = band * COEFFICIENTS_PER_BAND
         // 中心频率逼近奈奎斯特时峰值滤波会失稳，直接直通
-        if (levelDb == 0 || sampleRate <= 0 || frequencyHz >= sampleRate * MAX_FREQUENCY_RATIO) {
-            coefficients[offset] = 1f
-            for (index in 1 until COEFFICIENTS_PER_BAND) coefficients[offset + index] = 0f
+        if (levelDb == 0 || frequencyHz >= sampleRate * MAX_FREQUENCY_RATIO) {
+            coefficients[offset] = 1.0
+            for (index in 1 until COEFFICIENTS_PER_BAND) coefficients[offset + index] = 0.0
             return
         }
 
@@ -166,11 +172,11 @@ internal class EqualizerAudioProcessor : BaseAudioProcessor() {
         val alpha = sin(angularFrequency) / (2.0 * BAND_Q)
         val cosine = cos(angularFrequency)
         val a0 = 1.0 + alpha / amplitude
-        coefficients[offset] = ((1.0 + alpha * amplitude) / a0).toFloat()
-        coefficients[offset + 1] = (-2.0 * cosine / a0).toFloat()
-        coefficients[offset + 2] = ((1.0 - alpha * amplitude) / a0).toFloat()
-        coefficients[offset + 3] = (-2.0 * cosine / a0).toFloat()
-        coefficients[offset + 4] = ((1.0 - alpha / amplitude) / a0).toFloat()
+        coefficients[offset] = (1.0 + alpha * amplitude) / a0
+        coefficients[offset + 1] = -2.0 * cosine / a0
+        coefficients[offset + 2] = (1.0 - alpha * amplitude) / a0
+        coefficients[offset + 3] = -2.0 * cosine / a0
+        coefficients[offset + 4] = (1.0 - alpha / amplitude) / a0
     }
 
     private companion object {
@@ -179,13 +185,11 @@ internal class EqualizerAudioProcessor : BaseAudioProcessor() {
         private const val STATE_PER_CHANNEL = 4
         private const val BYTES_PER_SHORT = 2
         private const val BYTES_PER_FLOAT = 4
-        private const val SHORT_SCALE = 32768f
-        private const val SHORT_MIN = -32768
-        private const val SHORT_MAX = 32767
-        private const val FLOAT_MIN = -1f
-        private const val FLOAT_MAX = 1f
+        private const val SHORT_SCALE = 32768.0
+        private const val MAX_OUTPUT_LEVEL = 0.98
+        private const val GAIN_RELEASE_SECONDS = 0.1
 
-        // 十分之一倍频程相邻，Q 取 1.414 对应约一个倍频程带宽
+        // 相邻中心频率约差一个倍频程，Q 取 1.414
         private const val BAND_Q = 1.4142135623730951
         private const val MAX_FREQUENCY_RATIO = 0.45
     }
