@@ -152,6 +152,7 @@ internal val PLAYER_ACTION_METHODS = setOf(
     "player.show_scale",
     "player.show_decoder",
     "player.show_video_filters",
+    "player.show_audio_equalizer",
     "player.pip",
     "player.screenshot",
     "player.background",

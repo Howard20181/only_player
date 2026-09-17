@@ -8,6 +8,9 @@ import one.only.player.core.common.AppLanguageManager
 import one.only.player.core.common.AppThemeMode
 import one.only.player.core.common.AppThemeModeManager
 import one.only.player.core.model.ApplicationPreferences
+import one.only.player.core.model.AudioEqualizerBand
+import one.only.player.core.model.AudioEqualizerBuiltInPreset
+import one.only.player.core.model.AudioEqualizerPreset
 import one.only.player.core.model.ControllerAutoHidePreset
 import one.only.player.core.model.DecoderPriority
 import one.only.player.core.model.DoubleTapGesture
@@ -25,7 +28,13 @@ import one.only.player.core.model.SubtitleEdgeStyle
 import one.only.player.core.model.ThemeConfig
 import one.only.player.core.model.ThumbnailGenerationStrategy
 import one.only.player.core.model.VideoFilterPreset
+import one.only.player.core.model.toAudioEqualizerPreset
 import one.only.player.core.model.toVideoFilterPreset
+import one.only.player.core.model.withAudioEqualizerBandLevel
+import one.only.player.core.model.withAudioEqualizerBuiltInPresetApplied
+import one.only.player.core.model.withAudioEqualizerPresetApplied
+import one.only.player.core.model.withAudioEqualizerPresetDeleted
+import one.only.player.core.model.withAudioEqualizerPresetSaved
 import one.only.player.core.model.withControlMoved
 import one.only.player.core.model.withVideoFilterAdjustment
 import one.only.player.core.model.withVideoFilterPresetApplied
@@ -283,6 +292,16 @@ internal suspend fun DebugCommandEntryPoint.setSetting(
         "audio.normalization" -> updatePlayerBoolean(value) { preferences, isEnabled -> preferences.copy(isVolumeNormalizationEnabled = isEnabled) }
         "audio.boost" -> updatePlayerBoolean(value) { preferences, isEnabled -> preferences.copy(isVolumeBoostEnabled = isEnabled) }
         "audio.spatial" -> updatePlayerBoolean(value) { preferences, isEnabled -> preferences.copy(isSpatialAudioEnabled = isEnabled) }
+        "audio.equalizer" -> updatePlayerBoolean(value) { preferences, isEnabled -> preferences.copy(shouldApplyAudioEqualizer = isEnabled) }
+        "audio.equalizer_band" -> {
+            val band = equalizerBandValue(value.requiredString(EXTRA_NAME))
+            val levelDb = value.requiredInt(EXTRA_VALUE)
+            preferencesRepository().updatePlayerPreferences { it.withAudioEqualizerBandLevel(band, levelDb) }
+        }
+        "audio.equalizer_preset" -> {
+            val preset = enumValue<AudioEqualizerBuiltInPreset>(value.requiredString(EXTRA_VALUE))
+            preferencesRepository().updatePlayerPreferences { it.withAudioEqualizerBuiltInPresetApplied(preset) }
+        }
         "subtitle.auto_load" -> updatePlayerBoolean(value) { preferences, isEnabled -> preferences.copy(isSubtitleAutoLoadEnabled = isEnabled) }
         "subtitle.remember_track" -> updatePlayerBoolean(value) { preferences, isEnabled -> preferences.copy(shouldRememberSubtitleTrack = isEnabled) }
         "subtitle.language" -> updatePlayerString(value) { preferences, stringValue -> preferences.copy(preferredSubtitleLanguage = stringValue) }
@@ -375,6 +394,7 @@ internal suspend fun DebugCommandEntryPoint.toggleSetting(target: String?) {
         "audio.normalization" -> togglePlayer { it.copy(isVolumeNormalizationEnabled = !it.isVolumeNormalizationEnabled) }
         "audio.boost" -> togglePlayer { it.copy(isVolumeBoostEnabled = !it.isVolumeBoostEnabled) }
         "audio.spatial" -> togglePlayer { it.copy(isSpatialAudioEnabled = !it.isSpatialAudioEnabled) }
+        "audio.equalizer" -> togglePlayer { it.copy(shouldApplyAudioEqualizer = !it.shouldApplyAudioEqualizer) }
         "subtitle.auto_load" -> togglePlayer { it.copy(isSubtitleAutoLoadEnabled = !it.isSubtitleAutoLoadEnabled) }
         "subtitle.remember_track" -> togglePlayer { it.copy(shouldRememberSubtitleTrack = !it.shouldRememberSubtitleTrack) }
         "subtitle.bold" -> togglePlayer { it.copy(shouldUseBoldSubtitleText = !it.shouldUseBoldSubtitleText) }
@@ -423,6 +443,18 @@ internal suspend fun DebugCommandEntryPoint.runSettingAction(
         "decoder.delete_filter_preset" -> {
             val preset = findVideoFilterPreset(value.requiredString(EXTRA_VALUE))
             preferencesRepository().updatePlayerPreferences { it.withVideoFilterPresetDeleted(preset) }
+        }
+        "audio.save_equalizer_preset" -> preferencesRepository().updatePlayerPreferences {
+            val name = value.requiredString(EXTRA_VALUE)
+            it.withAudioEqualizerPresetSaved(it.toAudioEqualizerPreset(name, System.currentTimeMillis()))
+        }
+        "audio.apply_equalizer_preset" -> {
+            val preset = findAudioEqualizerPreset(value.requiredString(EXTRA_VALUE))
+            preferencesRepository().updatePlayerPreferences { it.withAudioEqualizerPresetApplied(preset) }
+        }
+        "audio.delete_equalizer_preset" -> {
+            val preset = findAudioEqualizerPreset(value.requiredString(EXTRA_VALUE))
+            preferencesRepository().updatePlayerPreferences { it.withAudioEqualizerPresetDeleted(preset) }
         }
         else -> error("Unknown action target: $target")
     }
@@ -535,3 +567,12 @@ private suspend fun DebugCommandEntryPoint.togglePlayer(transform: (PlayerPrefer
 private fun DebugCommandEntryPoint.findVideoFilterPreset(name: String): VideoFilterPreset = preferencesRepository().playerPreferences.value.videoFilterPresets
     .firstOrNull { it.name == name }
     ?: error("Filter preset not found: $name")
+
+private fun DebugCommandEntryPoint.findAudioEqualizerPreset(name: String): AudioEqualizerPreset = preferencesRepository().playerPreferences.value.audioEqualizerPresets
+    .firstOrNull { it.name == name }
+    ?: error("Equalizer preset not found: $name")
+
+// 频段既接受枚举名，也接受从 0 开始的下标
+private fun equalizerBandValue(value: String): AudioEqualizerBand = value.toIntOrNull()
+    ?.let { index -> AudioEqualizerBand.entries.getOrNull(index) }
+    ?: enumValue<AudioEqualizerBand>(value)
