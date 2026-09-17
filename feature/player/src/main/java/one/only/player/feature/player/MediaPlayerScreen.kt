@@ -423,9 +423,6 @@ internal fun MediaPlayerScreen(
         (player as? androidx.media3.session.MediaController)?.previewVideoFilters(preferences)
         viewModel.updateVideoFilters(preferences)
     }
-    fun updateAudioEqualizer(preferences: PlayerPreferences) {
-        viewModel.updateAudioEqualizer(preferences)
-    }
     fun enterPictureInPicture() {
         when (playerPreferences.pictureInPictureMode) {
             PictureInPictureMode.NATIVE -> {
@@ -1230,7 +1227,8 @@ internal fun MediaPlayerScreen(
                     MenuRoute.AudioEqualizer -> AudioEqualizerPanel(
                         modifier = Modifier.fillMaxSize(),
                         preferences = playerPreferences,
-                        onPreferencesChange = ::updateAudioEqualizer,
+                        onEnabledChange = viewModel::setAudioEqualizerEnabled,
+                        onBandLevelChange = viewModel::updateAudioEqualizerBand,
                     )
                     MenuRoute.AudioEqualizerPresets -> Column(
                         modifier = Modifier
@@ -1245,7 +1243,10 @@ internal fun MediaPlayerScreen(
                                 viewModel.applyAudioEqualizerBuiltInPreset(preset)
                                 popMenuRoute()
                             },
-                            onApplyPreset = viewModel::applyAudioEqualizerPreset,
+                            onApplyPreset = { preset ->
+                                viewModel.applyAudioEqualizerPreset(preset)
+                                popMenuRoute()
+                            },
                             onDeletePreset = viewModel::deleteAudioEqualizerPreset,
                         )
                     }

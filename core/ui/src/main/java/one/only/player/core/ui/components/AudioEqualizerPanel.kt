@@ -8,7 +8,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -19,28 +19,22 @@ import kotlin.math.roundToInt
 import one.only.player.core.model.AudioEqualizerBand
 import one.only.player.core.model.PlayerPreferences
 import one.only.player.core.model.equalizerBandLevel
-import one.only.player.core.model.withAudioEqualizerBandLevel
 import one.only.player.core.ui.R
 import one.only.player.core.ui.designsystem.AppIcons
 
 // 十段增益都按整数分贝保存，滑杆刻度与存储值一一对应
-val AUDIO_EQUALIZER_GAIN_INT_RANGE =
+private val AUDIO_EQUALIZER_GAIN_INT_RANGE =
     PlayerPreferences.MIN_AUDIO_EQUALIZER_GAIN_DB..PlayerPreferences.MAX_AUDIO_EQUALIZER_GAIN_DB
-val AUDIO_EQUALIZER_GAIN_RANGE =
+private val AUDIO_EQUALIZER_GAIN_RANGE =
     AUDIO_EQUALIZER_GAIN_INT_RANGE.first.toFloat()..AUDIO_EQUALIZER_GAIN_INT_RANGE.last.toFloat()
 
 @Composable
 fun AudioEqualizerPanel(
     preferences: PlayerPreferences,
-    onPreferencesChange: (PlayerPreferences) -> Unit,
+    onEnabledChange: (Boolean) -> Unit,
+    onBandLevelChange: (AudioEqualizerBand, Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    // 拖动过程中只更新本地草稿，滑动结束才提交，避免逐帧写入
-    var draftPreferences by remember(preferences) { mutableStateOf(preferences) }
-    val commitDraft = {
-        onPreferencesChange(draftPreferences)
-    }
-
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -54,25 +48,34 @@ fun AudioEqualizerPanel(
             title = stringResource(R.string.enable_audio_equalizer),
             description = stringResource(R.string.enable_audio_equalizer_description),
             icon = AppIcons.Equalizer,
-            isChecked = draftPreferences.shouldApplyAudioEqualizer,
-            onClick = {
-                draftPreferences = draftPreferences.copy(shouldApplyAudioEqualizer = !draftPreferences.shouldApplyAudioEqualizer)
-                commitDraft()
-            },
+            isChecked = preferences.shouldApplyAudioEqualizer,
+            onClick = { onEnabledChange(!preferences.shouldApplyAudioEqualizer) },
         )
         PreferenceGroup {
-            AudioEqualizerBand.entries.forEach { band ->
-                AudioEqualizerBandSlider(
-                    band = band,
-                    levelDb = draftPreferences.equalizerBandLevel(band),
-                    isEnabled = draftPreferences.shouldApplyAudioEqualizer,
-                    onLevelChange = { levelDb ->
-                        draftPreferences = draftPreferences.withAudioEqualizerBandLevel(band, levelDb)
-                    },
-                    onCommit = commitDraft,
-                )
-            }
+            AudioEqualizerBandSliders(
+                preferences = preferences,
+                onBandLevelChange = onBandLevelChange,
+            )
         }
+    }
+}
+
+@Composable
+fun AudioEqualizerBandSliders(
+    preferences: PlayerPreferences,
+    onBandLevelChange: (AudioEqualizerBand, Int) -> Unit,
+    sliderTestTagPrefix: String = "slider_audio_equalizer_band",
+    resetTestTagPrefix: String = "btn_reset_audio_equalizer_band",
+) {
+    AudioEqualizerBand.entries.forEach { band ->
+        AudioEqualizerBandSlider(
+            band = band,
+            levelDb = preferences.equalizerBandLevel(band),
+            isEnabled = preferences.shouldApplyAudioEqualizer,
+            onCommit = { onBandLevelChange(band, it) },
+            sliderTestTag = "${sliderTestTagPrefix}_${band.ordinal}",
+            resetTestTag = "${resetTestTagPrefix}_${band.ordinal}",
+        )
     }
 }
 
@@ -81,30 +84,30 @@ private fun AudioEqualizerBandSlider(
     band: AudioEqualizerBand,
     levelDb: Int,
     isEnabled: Boolean,
-    onLevelChange: (Int) -> Unit,
-    onCommit: () -> Unit,
+    onCommit: (Int) -> Unit,
+    sliderTestTag: String,
+    resetTestTag: String,
 ) {
+    // 只保留当前频段的拖动草稿，其他偏好更新不打断手势
+    var draftLevel by remember(levelDb, isEnabled) { mutableIntStateOf(levelDb) }
     val frequencyLabel = band.frequencyLabel()
     PreferenceSlider(
-        modifier = Modifier.testTag("slider_audio_equalizer_band_${band.ordinal}"),
+        modifier = Modifier.testTag(sliderTestTag),
         title = frequencyLabel,
-        description = stringResource(R.string.decibel_value, signedDecibels(levelDb)),
+        description = stringResource(R.string.decibel_value, signedDecibels(draftLevel)),
         isEnabled = isEnabled,
-        value = levelDb.toFloat(),
+        value = draftLevel.toFloat(),
         valueRange = AUDIO_EQUALIZER_GAIN_RANGE,
         steps = AUDIO_EQUALIZER_GAIN_INT_RANGE.sliderStepCount(),
-        onValueChange = { rawValue ->
-            val newValue = rawValue.roundToInt()
-            if (newValue != levelDb) onLevelChange(newValue)
-        },
-        onValueChangeFinished = onCommit,
+        onValueChange = { draftLevel = it.roundToInt() },
+        onValueChangeFinished = { onCommit(draftLevel) },
         trailingContent = {
             ResetIconButton(
-                modifier = Modifier.testTag("btn_reset_audio_equalizer_band_${band.ordinal}"),
+                modifier = Modifier.testTag(resetTestTag),
                 enabled = isEnabled,
                 onClick = {
-                    onLevelChange(PlayerPreferences.DEFAULT_AUDIO_EQUALIZER_GAIN_DB)
-                    onCommit()
+                    draftLevel = PlayerPreferences.DEFAULT_AUDIO_EQUALIZER_GAIN_DB
+                    onCommit(draftLevel)
                 },
                 contentDescription = stringResource(R.string.reset_audio_equalizer_band, frequencyLabel),
             )

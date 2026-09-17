@@ -16,5 +16,5 @@ internal data class AudioEqualizerSettings(
 
 internal fun PlayerPreferences.toAudioEqualizerSettings(): AudioEqualizerSettings = AudioEqualizerSettings(
     isEnabled = shouldApplyAudioEqualizer,
-    bandLevelsDb = audioEqualizerBandLevels.normalizedEqualizerBandLevels(),
+    bandLevelsDb = normalizedEqualizerBandLevels(audioEqualizerBandLevels),
 )

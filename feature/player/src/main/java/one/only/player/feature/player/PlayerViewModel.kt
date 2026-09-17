@@ -28,6 +28,7 @@ import one.only.player.core.data.repository.SubtitleFontRepository
 import one.only.player.core.data.repository.buildRemotePlaybackStateKey
 import one.only.player.core.domain.GetSortedPlaylistUseCase
 import one.only.player.core.model.ApplicationPreferences
+import one.only.player.core.model.AudioEqualizerBand
 import one.only.player.core.model.AudioEqualizerBuiltInPreset
 import one.only.player.core.model.AudioEqualizerPreset
 import one.only.player.core.model.DecoderPriority
@@ -40,8 +41,8 @@ import one.only.player.core.model.VideoContentScale
 import one.only.player.core.model.VideoFilterPreset
 import one.only.player.core.model.toAudioEqualizerPreset
 import one.only.player.core.model.toVideoFilterPreset
+import one.only.player.core.model.withAudioEqualizerBandLevel
 import one.only.player.core.model.withAudioEqualizerBuiltInPresetApplied
-import one.only.player.core.model.withAudioEqualizerFrom
 import one.only.player.core.model.withAudioEqualizerPresetApplied
 import one.only.player.core.model.withAudioEqualizerPresetDeleted
 import one.only.player.core.model.withAudioEqualizerPresetSaved
@@ -251,11 +252,22 @@ class PlayerViewModel @Inject constructor(
         }
     }
 
-    fun updateAudioEqualizer(preferences: PlayerPreferences) {
-        Logger.debug(TAG, "Update audio equalizer from player: enabled=${preferences.shouldApplyAudioEqualizer} levels=${preferences.audioEqualizerBandLevels}")
+    fun setAudioEqualizerEnabled(isEnabled: Boolean) {
         viewModelScope.launch {
             preferencesRepository.updatePlayerPreferences {
-                it.withAudioEqualizerFrom(preferences)
+                it.copy(shouldApplyAudioEqualizer = isEnabled)
+            }
+        }
+    }
+
+    fun updateAudioEqualizerBand(
+        band: AudioEqualizerBand,
+        levelDb: Int,
+    ) {
+        viewModelScope.launch {
+            preferencesRepository.updatePlayerPreferences {
+                if (!it.shouldApplyAudioEqualizer) return@updatePlayerPreferences it
+                it.withAudioEqualizerBandLevel(band, levelDb)
             }
         }
     }

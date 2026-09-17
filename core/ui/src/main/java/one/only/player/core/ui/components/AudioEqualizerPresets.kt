@@ -17,8 +17,7 @@ import androidx.compose.ui.unit.dp
 import one.only.player.core.model.AudioEqualizerBuiltInPreset
 import one.only.player.core.model.AudioEqualizerPreset
 import one.only.player.core.model.PlayerPreferences
-import one.only.player.core.model.matchesAudioEqualizerBuiltInPreset
-import one.only.player.core.model.matchesAudioEqualizerPreset
+import one.only.player.core.model.isAudioEqualizerPresetSelected
 import one.only.player.core.ui.R
 import one.only.player.core.ui.designsystem.AppIcons
 import top.yukonga.miuix.kmp.basic.Icon
@@ -48,7 +47,7 @@ fun AudioEqualizerPresetListContent(
                     .fillMaxWidth()
                     .testTag("option_equalizer_built_in_${preset.name.lowercase()}"),
                 text = stringResource(preset.labelRes()),
-                isSelected = preferences.matchesAudioEqualizerBuiltInPreset(preset),
+                isSelected = preferences.isAudioEqualizerPresetSelected(preset),
                 onClick = { onApplyBuiltInPreset(preset) },
             )
         }
@@ -74,7 +73,7 @@ fun AudioEqualizerPresetListContent(
             ) {
                 RadioTextButton(
                     text = preset.name,
-                    isSelected = preferences.matchesAudioEqualizerPreset(preset),
+                    isSelected = preferences.isAudioEqualizerPresetSelected(preset),
                     onClick = { onApplyPreset(preset) },
                     modifier = Modifier
                         .weight(1f)

@@ -15,7 +15,6 @@ import one.only.player.core.model.AudioEqualizerBuiltInPreset
 import one.only.player.core.model.AudioEqualizerPreset
 import one.only.player.core.model.PlayerPreferences
 import one.only.player.core.model.toAudioEqualizerPreset
-import one.only.player.core.model.withAudioEqualizerAdjustment
 import one.only.player.core.model.withAudioEqualizerBandLevel
 import one.only.player.core.model.withAudioEqualizerBuiltInPresetApplied
 import one.only.player.core.model.withAudioEqualizerPresetApplied
@@ -165,12 +164,14 @@ class AudioPreferencesViewModel @Inject constructor(
         }
     }
 
-    private fun updateAudioEqualizerBand(band: AudioEqualizerBand, levelDb: Int) {
+    private fun updateAudioEqualizerBand(
+        band: AudioEqualizerBand,
+        levelDb: Int,
+    ) {
         viewModelScope.launch {
             preferencesRepository.updatePlayerPreferences {
-                it.withAudioEqualizerAdjustment { preferences ->
-                    preferences.withAudioEqualizerBandLevel(band, levelDb)
-                }
+                if (!it.shouldApplyAudioEqualizer) return@updatePlayerPreferences it
+                it.withAudioEqualizerBandLevel(band, levelDb)
             }
         }
     }
