@@ -1670,10 +1670,7 @@ class PlayerService : MediaSessionService() {
         )
         val renderersFactory = NormalizingRenderersFactory(
             context = applicationContext,
-            audioProcessors = arrayOf(
-                audioEffectsCoordinator.volumeNormalizationAudioProcessor,
-                audioEffectsCoordinator.equalizerAudioProcessor,
-            ),
+            audioProcessors = audioEffectsCoordinator.createAudioProcessors(preferences),
             shouldUseAudioExtensionFallback = shouldUseAudioExtensionFallback,
         )
             .setMediaCodecSelector(DolbyPreferringMediaCodecSelector)
@@ -1780,7 +1777,6 @@ class PlayerService : MediaSessionService() {
                     mediaSession?.player?.updatePauseAtEndOfMediaItems(preferences)
                 }
         }
-        audioEffectsCoordinator.applyVolumeNormalization(playerPreferences.isVolumeNormalizationEnabled)
         val assHandler = AssHandler(renderType = resolveAssRenderType())
         this.assHandler = assHandler
         AssHandlerRegistry.register(assHandler)
