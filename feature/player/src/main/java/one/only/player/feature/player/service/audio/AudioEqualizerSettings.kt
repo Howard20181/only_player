@@ -1,7 +1,6 @@
 package one.only.player.feature.player.service.audio
 
 import one.only.player.core.model.PlayerPreferences
-import one.only.player.core.model.normalizedEqualizerBandLevels
 
 // 传给音频处理器的均衡器参数快照，跨线程传递时按值比较
 internal data class AudioEqualizerSettings(
@@ -10,11 +9,11 @@ internal data class AudioEqualizerSettings(
 ) {
 
     // 全零曲线等价于直通，跳过滤波省下 CPU
-    val isBypass: Boolean
+    val shouldBypass: Boolean
         get() = !isEnabled || bandLevelsDb.all { it == PlayerPreferences.DEFAULT_AUDIO_EQUALIZER_GAIN_DB }
 }
 
 internal fun PlayerPreferences.toAudioEqualizerSettings(): AudioEqualizerSettings = AudioEqualizerSettings(
     isEnabled = shouldApplyAudioEqualizer,
-    bandLevelsDb = normalizedEqualizerBandLevels(audioEqualizerBandLevels),
+    bandLevelsDb = audioEqualizerBandLevels,
 )

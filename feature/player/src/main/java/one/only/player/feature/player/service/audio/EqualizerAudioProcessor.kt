@@ -48,7 +48,7 @@ internal class EqualizerAudioProcessor : BaseAudioProcessor() {
         if (size <= 0) return
         val outputBuffer = replaceOutputBuffer(size)
         val currentSettings = settings
-        if (currentSettings.isBypass) {
+        if (currentSettings.shouldBypass) {
             if (!isBypassing) clearFilterState()
             isBypassing = true
             outputBuffer.put(inputBuffer)
@@ -136,7 +136,7 @@ internal class EqualizerAudioProcessor : BaseAudioProcessor() {
         return value
     }
 
-    // 曲线变化时保留滤波状态，参数在进入处理器前已归一为十段
+    // 曲线变化时保留滤波状态，参数固定为十段
     private fun updateCoefficients(currentSettings: AudioEqualizerSettings) {
         val levels = currentSettings.bandLevelsDb
         if (levels == appliedLevels) return

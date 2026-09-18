@@ -3,7 +3,6 @@ package one.only.player.core.model
 import kotlinx.serialization.Serializable
 
 // 均衡器固定 10 段，中心频率是 UI 与 DSP 共用的唯一来源
-@Serializable
 enum class AudioEqualizerBand(
     val centerFrequencyHz: Int,
 ) {
@@ -20,7 +19,6 @@ enum class AudioEqualizerBand(
 }
 
 // 内置预设只提供曲线，名称留给 UI 层本地化
-@Serializable
 enum class AudioEqualizerBuiltInPreset(
     val bandLevels: List<Int>,
 ) {
@@ -31,15 +29,7 @@ enum class AudioEqualizerBuiltInPreset(
 
 @Serializable
 data class AudioEqualizerPreset(
-    val id: Long = 0L,
+    val id: Long,
     val name: String,
-    val bandLevels: List<Int> = PlayerPreferences.DEFAULT_AUDIO_EQUALIZER_BAND_LEVELS,
+    val bandLevels: List<Int>,
 )
-
-// 频段增益按索引存放，长度始终与 AudioEqualizerBand 一致
-fun normalizedEqualizerBandLevels(levels: List<Int>): List<Int> = List(AudioEqualizerBand.entries.size) { index ->
-    (levels.getOrNull(index) ?: PlayerPreferences.DEFAULT_AUDIO_EQUALIZER_GAIN_DB).coerceIn(
-        PlayerPreferences.MIN_AUDIO_EQUALIZER_GAIN_DB,
-        PlayerPreferences.MAX_AUDIO_EQUALIZER_GAIN_DB,
-    )
-}

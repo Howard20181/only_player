@@ -75,6 +75,7 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.guava.future
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
@@ -1749,10 +1750,9 @@ class PlayerService : MediaSessionService() {
         }
         serviceScope.launch {
             preferencesRepository.playerPreferences
-                .distinctUntilChanged { old, new -> old.toAudioEqualizerSettings() == new.toAudioEqualizerSettings() }
-                .collect { preferences ->
-                    audioEffectsCoordinator.applyEqualizer(preferences.toAudioEqualizerSettings())
-                }
+                .map { it.toAudioEqualizerSettings() }
+                .distinctUntilChanged()
+                .collect(audioEffectsCoordinator::applyEqualizer)
         }
         serviceScope.launch {
             preferencesRepository.playerPreferences

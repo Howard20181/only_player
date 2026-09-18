@@ -18,7 +18,6 @@ import one.only.player.core.model.AudioEqualizerBuiltInPreset
 import one.only.player.core.model.AudioEqualizerPreset
 import one.only.player.core.model.PlayerPreferences
 import one.only.player.core.model.isAudioEqualizerPresetSelected
-import one.only.player.core.model.normalizedEqualizerBandLevels
 import one.only.player.core.ui.R
 import one.only.player.core.ui.designsystem.AppIcons
 import top.yukonga.miuix.kmp.basic.Icon
@@ -137,11 +136,11 @@ private fun PresetSectionTitle(
 
 @Composable
 internal fun PlayerPreferences.audioEqualizerPresetLabel(): String {
-    val levels = normalizedEqualizerBandLevels(audioEqualizerBandLevels)
+    val levels = audioEqualizerBandLevels
     val builtInPreset = AudioEqualizerBuiltInPreset.entries.firstOrNull { it.bandLevels == levels }
     if (builtInPreset != null) return stringResource(builtInPreset.labelRes())
 
-    return audioEqualizerPresets.firstOrNull { normalizedEqualizerBandLevels(it.bandLevels) == levels }?.name
+    return audioEqualizerPresets.firstOrNull { it.bandLevels == levels }?.name
         ?: stringResource(R.string.audio_equalizer_custom)
 }
 

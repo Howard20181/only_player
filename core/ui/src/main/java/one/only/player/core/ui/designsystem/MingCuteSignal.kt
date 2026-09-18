@@ -1,5 +1,5 @@
-// Generated from MingCute Core SVG assets. Source: https://github.com/mingcute-design/mingcute-icons
-// Do not edit paths by hand.
+// 由 MingCute Core SVG 资源生成，来源：https://github.com/mingcute-design/mingcute-icons
+// 路径数据与源图标保持一致。
 package one.only.player.core.ui.designsystem
 
 import androidx.compose.ui.graphics.Color

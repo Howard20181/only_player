@@ -1,7 +1,6 @@
 package one.only.player.core.ui.components
 
 import androidx.annotation.StringRes
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -51,7 +50,6 @@ fun AudioEqualizerPanel(
             .padding(horizontal = 24.dp)
             .padding(bottom = 24.dp)
             .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         AudioEqualizerControls(
             preferences = preferences,
@@ -130,8 +128,8 @@ fun AudioEqualizerControls(
 private fun AudioEqualizerBandSliders(
     preferences: PlayerPreferences,
     onBandLevelChange: (AudioEqualizerBand, Int) -> Unit,
-    sliderTestTagPrefix: String = "slider_audio_equalizer_band",
-    resetTestTagPrefix: String = "btn_reset_audio_equalizer_band",
+    sliderTestTagPrefix: String,
+    resetTestTagPrefix: String,
 ) {
     AudioEqualizerBand.entries.groupBy { it.rangeLabelRes() }.forEach { (labelRes, bands) ->
         Text(
@@ -208,13 +206,13 @@ private fun AudioEqualizerBandSlider(
 
 // 频段标题与重置说明共用同一份中心频率文案
 @Composable
-fun AudioEqualizerBand.frequencyLabel(): String = if (centerFrequencyHz >= KILOHERTZ_THRESHOLD_HZ) {
+private fun AudioEqualizerBand.frequencyLabel(): String = if (centerFrequencyHz >= KILOHERTZ_THRESHOLD_HZ) {
     stringResource(R.string.frequency_khz, centerFrequencyHz / KILOHERTZ_THRESHOLD_HZ)
 } else {
     stringResource(R.string.frequency_hz, centerFrequencyHz)
 }
 
 // 面板与设置页共用的增益文案，正值显式带加号
-fun signedDecibels(valueDb: Int): String = if (valueDb > 0) "+$valueDb" else "$valueDb"
+private fun signedDecibels(valueDb: Int): String = if (valueDb > 0) "+$valueDb" else "$valueDb"
 
 private const val KILOHERTZ_THRESHOLD_HZ = 1000
