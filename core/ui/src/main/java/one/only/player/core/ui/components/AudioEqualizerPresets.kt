@@ -18,6 +18,7 @@ import one.only.player.core.model.AudioEqualizerBuiltInPreset
 import one.only.player.core.model.AudioEqualizerPreset
 import one.only.player.core.model.PlayerPreferences
 import one.only.player.core.model.isAudioEqualizerPresetSelected
+import one.only.player.core.model.normalizedEqualizerBandLevels
 import one.only.player.core.ui.R
 import one.only.player.core.ui.designsystem.AppIcons
 import top.yukonga.miuix.kmp.basic.Icon
@@ -53,7 +54,7 @@ fun AudioEqualizerPresetListContent(
         }
 
         PresetSectionTitle(
-            text = stringResource(R.string.audio_equalizer_presets),
+            text = stringResource(R.string.audio_equalizer_custom_presets),
             testTag = "text_audio_equalizer_presets",
             modifier = Modifier.padding(top = 8.dp),
         )
@@ -134,14 +135,19 @@ private fun PresetSectionTitle(
     )
 }
 
+@Composable
+internal fun PlayerPreferences.audioEqualizerPresetLabel(): String {
+    val levels = normalizedEqualizerBandLevels(audioEqualizerBandLevels)
+    val builtInPreset = AudioEqualizerBuiltInPreset.entries.firstOrNull { it.bandLevels == levels }
+    if (builtInPreset != null) return stringResource(builtInPreset.labelRes())
+
+    return audioEqualizerPresets.firstOrNull { normalizedEqualizerBandLevels(it.bandLevels) == levels }?.name
+        ?: stringResource(R.string.audio_equalizer_custom)
+}
+
 @StringRes
 private fun AudioEqualizerBuiltInPreset.labelRes(): Int = when (this) {
     AudioEqualizerBuiltInPreset.FLAT -> R.string.equalizer_preset_flat
-    AudioEqualizerBuiltInPreset.BASS_BOOST -> R.string.equalizer_preset_bass_boost
-    AudioEqualizerBuiltInPreset.TREBLE_BOOST -> R.string.equalizer_preset_treble_boost
     AudioEqualizerBuiltInPreset.VOCAL -> R.string.equalizer_preset_vocal
-    AudioEqualizerBuiltInPreset.ROCK -> R.string.equalizer_preset_rock
-    AudioEqualizerBuiltInPreset.POP -> R.string.equalizer_preset_pop
-    AudioEqualizerBuiltInPreset.JAZZ -> R.string.equalizer_preset_jazz
-    AudioEqualizerBuiltInPreset.CLASSICAL -> R.string.equalizer_preset_classical
+    AudioEqualizerBuiltInPreset.BASS_BOOST -> R.string.equalizer_preset_bass_boost
 }

@@ -22,7 +22,7 @@ import one.only.player.core.model.PlayerPreferences
 import one.only.player.core.ui.R
 import one.only.player.core.ui.components.AppScaffold
 import one.only.player.core.ui.components.AppTopAppBar
-import one.only.player.core.ui.components.AudioEqualizerBandSliders
+import one.only.player.core.ui.components.AudioEqualizerControls
 import one.only.player.core.ui.components.AudioEqualizerPresetPickerDialog
 import one.only.player.core.ui.components.ClickablePreferenceItem
 import one.only.player.core.ui.components.PageContentTopPadding
@@ -275,36 +275,16 @@ private fun AudioEqualizerSettings(
     preferences: PlayerPreferences,
     onEvent: (AudioPreferencesUiEvent) -> Unit,
 ) {
-    PreferenceGroup {
-        PreferenceSwitch(
-            modifier = Modifier.testTag("switch_settings_audio_equalizer"),
-            title = stringResource(R.string.enable_audio_equalizer),
-            description = stringResource(R.string.enable_audio_equalizer_description),
-            icon = AppIcons.Equalizer,
-            isChecked = preferences.shouldApplyAudioEqualizer,
-            onClick = { onEvent(AudioPreferencesUiEvent.ToggleAudioEqualizer) },
-        )
-        ClickablePreferenceItem(
-            modifier = Modifier.testTag("item_settings_audio_equalizer_presets"),
-            title = stringResource(R.string.audio_equalizer_presets),
-            icon = AppIcons.Equalizer,
-            onClick = { onEvent(AudioPreferencesUiEvent.ShowDialog(AudioPreferenceDialog.AudioEqualizerPresets)) },
-        )
-        ClickablePreferenceItem(
-            modifier = Modifier.testTag("item_settings_save_audio_equalizer_preset"),
-            title = stringResource(R.string.save_current_as_audio_equalizer_preset),
-            icon = AppIcons.Save,
-            onClick = { onEvent(AudioPreferencesUiEvent.ShowDialog(AudioPreferenceDialog.SaveAudioEqualizerPreset)) },
-        )
-        AudioEqualizerBandSliders(
-            preferences = preferences,
-            onBandLevelChange = { band, levelDb ->
-                onEvent(AudioPreferencesUiEvent.UpdateAudioEqualizerBand(band, levelDb))
-            },
-            sliderTestTagPrefix = "item_settings_audio_equalizer_band",
-            resetTestTagPrefix = "btn_reset_settings_audio_equalizer_band",
-        )
-    }
+    AudioEqualizerControls(
+        preferences = preferences,
+        onEnabledChange = { onEvent(AudioPreferencesUiEvent.ToggleAudioEqualizer) },
+        onBandLevelChange = { band, levelDb ->
+            onEvent(AudioPreferencesUiEvent.UpdateAudioEqualizerBand(band, levelDb))
+        },
+        onShowPresets = { onEvent(AudioPreferencesUiEvent.ShowDialog(AudioPreferenceDialog.AudioEqualizerPresets)) },
+        onSavePreset = { onEvent(AudioPreferencesUiEvent.ShowDialog(AudioPreferenceDialog.SaveAudioEqualizerPreset)) },
+        testTagPrefix = "settings_audio_equalizer",
+    )
 }
 
 @PreviewLightDark

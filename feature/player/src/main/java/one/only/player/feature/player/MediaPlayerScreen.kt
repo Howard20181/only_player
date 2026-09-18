@@ -841,9 +841,9 @@ internal fun MediaPlayerScreen(
     CompositionLocalProvider(
         LocalControlsVisibilityState provides controlsVisibilityState,
     ) {
-        Box {
+        Box(modifier = modifier) {
             Box(
-                modifier = modifier
+                modifier = Modifier
                     .fillMaxSize()
                     .background(Color.Black)
                     .onSizeChanged { size ->
@@ -914,7 +914,7 @@ internal fun MediaPlayerScreen(
                     exit = fadeOut(),
                 ) {
                     Box(
-                        modifier = modifier
+                        modifier = Modifier
                             .fillMaxSize()
                             .background(
                                 Color.Black.copy(alpha = 0.3f),
@@ -1110,31 +1110,6 @@ internal fun MediaPlayerScreen(
                         }
                     }
 
-                    MenuRoute.AudioEqualizer -> {
-                        {
-                            MiuixIconButton(
-                                modifier = Modifier.testTag("btn_save_audio_equalizer_preset"),
-                                onClick = { isSaveEqualizerPresetDialogVisible = true },
-                            ) {
-                                MiuixIcon(
-                                    imageVector = AppIcons.Save,
-                                    contentDescription = stringResource(coreUiR.string.save_audio_equalizer_preset),
-                                    tint = menuPanelTokens.contentColor,
-                                )
-                            }
-                            MiuixIconButton(
-                                modifier = Modifier.testTag("btn_audio_equalizer_presets"),
-                                onClick = { navigateToMenuRoute(MenuRoute.AudioEqualizerPresets) },
-                            ) {
-                                MiuixIcon(
-                                    imageVector = AppIcons.Equalizer,
-                                    contentDescription = stringResource(coreUiR.string.audio_equalizer_presets),
-                                    tint = menuPanelTokens.contentColor,
-                                )
-                            }
-                        }
-                    }
-
                     else -> null
                 },
             ) { route ->
@@ -1229,6 +1204,8 @@ internal fun MediaPlayerScreen(
                         preferences = playerPreferences,
                         onEnabledChange = viewModel::setAudioEqualizerEnabled,
                         onBandLevelChange = viewModel::updateAudioEqualizerBand,
+                        onShowPresets = { navigateToMenuRoute(MenuRoute.AudioEqualizerPresets) },
+                        onSavePreset = { isSaveEqualizerPresetDialogVisible = true },
                     )
                     MenuRoute.AudioEqualizerPresets -> Column(
                         modifier = Modifier
