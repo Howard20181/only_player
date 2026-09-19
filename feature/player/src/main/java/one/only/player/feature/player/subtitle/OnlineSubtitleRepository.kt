@@ -7,25 +7,34 @@ import java.io.File
 import java.io.FilterInputStream
 import java.io.IOException
 import java.io.InputStream
+import java.io.OutputStream
 import java.net.URI
+import java.security.MessageDigest
 import javax.inject.Inject
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import one.only.player.core.common.Dispatcher
+import one.only.player.core.common.DispatcherType
 import one.only.player.core.common.Logger
 
 class OnlineSubtitleRepository(
     private val cacheRoot: File,
     private val downloader: suspend (String) -> DownloadStream,
     private val nowMillis: () -> Long,
+    private val ioDispatcher: CoroutineDispatcher,
 ) {
 
     @Inject
     constructor(
         @ApplicationContext context: Context,
+        @Dispatcher(DispatcherType.IO) ioDispatcher: CoroutineDispatcher,
     ) : this(
         cacheRoot = context.cacheDir,
         downloader = { url -> downloadWithOkHttp(url) },
         nowMillis = System::currentTimeMillis,
+        ioDispatcher = ioDispatcher,
     )
 
     private val subtitleCacheDir = File(cacheRoot, ONLINE_SUBTITLE_DIR_NAME)
@@ -42,46 +51,74 @@ class OnlineSubtitleRepository(
         try {
             downloader(url).inputStream.use { inputStream ->
                 tempFile.outputStream().use { outputStream ->
-                    val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
-                    var totalBytes = 0L
-
-                    while (true) {
-                        val readCount = inputStream.read(buffer)
-                        if (readCount == -1) break
-
-                        totalBytes += readCount
-                        // 超限立即终止，避免落盘超出上限的字幕。
-                        if (totalBytes > MAX_SUBTITLE_BYTES) {
-                            throw OnlineSubtitleTooLargeException()
-                        }
-                        outputStream.write(buffer, 0, readCount)
-                    }
-
-                    if (totalBytes == 0L) {
-                        throw EmptyOnlineSubtitleException()
-                    }
+                    copyCapped(inputStream, outputStream)
                 }
             }
-
-            if (targetFile.exists()) {
-                targetFile.delete()
-            }
-            if (!tempFile.renameTo(targetFile)) {
-                throw IOException("Unable to move subtitle file")
-            }
-            targetFile.setLastModified(nowMillis())
-            Logger.debug(TAG, "Download online subtitle cached: file=${targetFile.name}, bytes=${targetFile.length()}")
-            return DownloadedOnlineSubtitle(file = targetFile)
-        } catch (exception: EmptyOnlineSubtitleException) {
-            tempFile.delete()
-            throw exception
-        } catch (exception: OnlineSubtitleTooLargeException) {
+            promoteTempFile(tempFile, targetFile)
+        } catch (exception: OnlineSubtitleException) {
             tempFile.delete()
             throw exception
         } catch (exception: IOException) {
+            Logger.error(TAG, "Download online subtitle failed", exception)
             tempFile.delete()
             throw OnlineSubtitleDownloadFailedException(exception)
         }
+
+        Logger.debug(TAG, "Download online subtitle cached: file=${targetFile.name}, bytes=${targetFile.length()}")
+        return DownloadedOnlineSubtitle(file = targetFile)
+    }
+
+    // 复制时检查大小，避免超限字幕占满缓存。
+    private fun copyCapped(
+        inputStream: InputStream,
+        outputStream: OutputStream,
+    ) {
+        val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+        var totalBytes = 0L
+        while (true) {
+            val readCount = inputStream.read(buffer)
+            if (readCount == -1) break
+
+            totalBytes += readCount
+            if (totalBytes > MAX_SUBTITLE_BYTES) throw OnlineSubtitleTooLargeException()
+            outputStream.write(buffer, 0, readCount)
+        }
+        if (totalBytes == 0L) throw EmptyOnlineSubtitleException()
+    }
+
+    // 搜索字幕已由数据层校验与解包，这里只负责缓存。
+    suspend fun importSubtitle(
+        bytes: ByteArray,
+        extension: String,
+    ): DownloadedOnlineSubtitle = withContext(ioDispatcher) {
+        subtitleCacheDir.mkdirs()
+        // 以内容哈希命名：同一条字幕重复导入复用同一份缓存
+        val baseName = MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
+        val targetFile = File(subtitleCacheDir, "$baseName.$extension")
+        val tempFile = File.createTempFile(baseName, ".$extension.part", subtitleCacheDir)
+        Logger.debug(TAG, "Import online subtitle start: extension=$extension, bytes=${bytes.size}")
+
+        try {
+            tempFile.writeBytes(bytes)
+            promoteTempFile(tempFile, targetFile)
+        } catch (exception: IOException) {
+            Logger.error(TAG, "Import online subtitle failed", exception)
+            tempFile.delete()
+            throw OnlineSubtitleDownloadFailedException(exception)
+        }
+
+        Logger.debug(TAG, "Import online subtitle cached: file=${targetFile.name}")
+        DownloadedOnlineSubtitle(file = targetFile)
+    }
+
+    private fun promoteTempFile(
+        tempFile: File,
+        targetFile: File,
+    ) {
+        if (!tempFile.renameTo(targetFile)) {
+            throw IOException("Unable to move subtitle file")
+        }
+        targetFile.setLastModified(nowMillis())
     }
 
     fun deleteExpiredSubtitles() {
@@ -173,19 +210,23 @@ class DownloadStream(
     val inputStream: InputStream,
 )
 
+open class OnlineSubtitleException(message: String) : IllegalStateException(message)
+
+open class InvalidOnlineSubtitleException(message: String) : IllegalArgumentException(message)
+
 class InvalidOnlineSubtitleSchemeException(
     val scheme: String,
-) : IllegalArgumentException("Unsupported subtitle scheme: $scheme")
+) : InvalidOnlineSubtitleException("Unsupported subtitle scheme: $scheme")
 
-class InvalidOnlineSubtitleUrlException : IllegalArgumentException("Unsupported subtitle URL")
+class InvalidOnlineSubtitleUrlException : InvalidOnlineSubtitleException("Unsupported subtitle URL")
 
 class InvalidOnlineSubtitleExtensionException(
     val extension: String,
-) : IllegalArgumentException("Unsupported subtitle extension: $extension")
+) : InvalidOnlineSubtitleException("Unsupported subtitle extension: $extension")
 
-class EmptyOnlineSubtitleException : IllegalStateException("Online subtitle is empty")
+class EmptyOnlineSubtitleException : OnlineSubtitleException("Online subtitle is empty")
 
-class OnlineSubtitleTooLargeException : IllegalStateException("Online subtitle exceeds 10 MB")
+class OnlineSubtitleTooLargeException : OnlineSubtitleException("Online subtitle exceeds 10 MB")
 
 class OnlineSubtitleDownloadFailedException(
     cause: IOException,

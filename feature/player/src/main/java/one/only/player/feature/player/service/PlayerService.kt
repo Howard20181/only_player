@@ -260,6 +260,7 @@ class PlayerService : MediaSessionService() {
     private val softwareDecoderRetried = mutableSetOf<String>()
     private var isPendingExternalSubAutoSelect = false
     private var pendingRememberedSubtitleSelection: PendingSubtitleSelection? = null
+    private var pendingAddedSubtitle: AddedSubtitleSelection? = null
     private var assHandler: AssHandler? = null
     private var activeDecoderPriority: DecoderPriority = DecoderPriority.AUTOMATIC
     private var hasPausedAtEndOfQueue = false
@@ -354,6 +355,7 @@ class PlayerService : MediaSessionService() {
             isMediaItemReady = false
             isPendingExternalSubAutoSelect = false
             pendingRememberedSubtitleSelection = null
+            if (pendingAddedSubtitle?.mediaId != mediaItem?.mediaId) pendingAddedSubtitle = null
             if (mediaItem != null) {
                 serviceScope.launch {
                     val playbackStateUri = playbackStateCoordinator.resolvePlaybackStateUri(mediaItem)
@@ -482,6 +484,7 @@ class PlayerService : MediaSessionService() {
         override fun onTracksChanged(tracks: Tracks) {
             super.onTracksChanged(tracks)
             if (tracks.groups.isEmpty()) return
+            if (selectAddedSubtitleIfAvailable(tracks)) return
 
             if (isPendingExternalSubAutoSelect) {
                 isPendingExternalSubAutoSelect = false
@@ -1412,6 +1415,10 @@ class PlayerService : MediaSessionService() {
                         return@future SessionResult(SessionError.ERROR_BAD_VALUE)
                     }
 
+                    if (currentMediaItem.mediaId != args.getString(CustomCommands.SUBTITLE_MEDIA_ID_KEY)) {
+                        return@future SessionResult(SessionError.ERROR_BAD_VALUE)
+                    }
+
                     val newSubConfiguration = uriToSubtitleConfiguration(
                         uri = subtitleUri,
                         subtitleEncoding = playerPreferences.subtitleTextEncoding,
@@ -1425,7 +1432,12 @@ class PlayerService : MediaSessionService() {
                         uri = playbackStateUri,
                         subtitleUri = subtitleUri,
                     )
+                    if (mediaSession?.player !== player || player.currentMediaItem?.mediaId != currentMediaItem.mediaId) {
+                        return@future SessionResult(SessionError.ERROR_BAD_VALUE)
+                    }
+                    pendingAddedSubtitle = AddedSubtitleSelection(currentMediaItem.mediaId, subtitleUriString)
                     player.addAdditionalSubtitleConfiguration(newSubConfiguration)
+                    selectAddedSubtitleIfAvailable(player.currentTracks)
                     Logger.info(TAG, "Added subtitle track: subtitle=${subtitleUri.toLogSummary()} media=${playbackStateUri.toLogSummary()}")
                     return@future SessionResult(SessionResult.RESULT_SUCCESS)
                 }
@@ -2217,6 +2229,27 @@ class PlayerService : MediaSessionService() {
             }
         }
     }
+
+    private fun selectAddedSubtitleIfAvailable(tracks: Tracks): Boolean {
+        val selection = pendingAddedSubtitle ?: return false
+        val player = mediaSession?.player ?: return false
+        if (player.currentMediaItem?.mediaId != selection.mediaId) return false
+        val index = subtitleTrackSelector.supportedTextTracks(tracks)
+            .indexOfFirst { it.getTrackFormat(0).id?.substringAfter(':') == selection.subtitleId }
+        if (index < 0) return false
+
+        pendingAddedSubtitle = null
+        pendingRememberedSubtitleSelection = null
+        isPendingExternalSubAutoSelect = false
+        isMediaItemReady = true
+        player.switchTrack(C.TRACK_TYPE_TEXT, index)
+        return true
+    }
+
+    private data class AddedSubtitleSelection(
+        val mediaId: String,
+        val subtitleId: String,
+    )
 
     private fun Player.restorePendingOrBestSubtitleTrack(
         tracks: Tracks,

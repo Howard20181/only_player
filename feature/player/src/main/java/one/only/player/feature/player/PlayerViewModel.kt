@@ -9,12 +9,16 @@ import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -26,7 +30,9 @@ import one.only.player.core.data.repository.PlaybackMarkRepository
 import one.only.player.core.data.repository.PreferencesRepository
 import one.only.player.core.data.repository.SubtitleFontRepository
 import one.only.player.core.data.repository.buildRemotePlaybackStateKey
+import one.only.player.core.domain.DownloadOnlineSubtitleUseCase
 import one.only.player.core.domain.GetSortedPlaylistUseCase
+import one.only.player.core.domain.SearchOnlineSubtitlesUseCase
 import one.only.player.core.model.ApplicationPreferences
 import one.only.player.core.model.AudioEqualizerBand
 import one.only.player.core.model.AudioEqualizerBuiltInPreset
@@ -34,6 +40,9 @@ import one.only.player.core.model.AudioEqualizerPreset
 import one.only.player.core.model.DecoderPriority
 import one.only.player.core.model.LastPlayerScreenOrientation
 import one.only.player.core.model.LoopMode
+import one.only.player.core.model.OnlineSubtitleLanguageFilter
+import one.only.player.core.model.OnlineSubtitleProvider
+import one.only.player.core.model.OnlineSubtitleResult
 import one.only.player.core.model.PlaybackMark
 import one.only.player.core.model.PlayerPreferences
 import one.only.player.core.model.Video
@@ -51,11 +60,16 @@ import one.only.player.core.model.withVideoFilterPresetApplied
 import one.only.player.core.model.withVideoFilterPresetDeleted
 import one.only.player.core.model.withVideoFilterPresetSaved
 import one.only.player.core.model.withVideoFiltersFrom
+import one.only.player.core.ui.base.DataState
 import one.only.player.feature.player.extensions.remoteFilePath
 import one.only.player.feature.player.extensions.remoteProtocol
 import one.only.player.feature.player.extensions.remoteServerId
+import one.only.player.feature.player.extensions.toSearchQuery
+import one.only.player.feature.player.state.OnlineSubtitleEvent
+import one.only.player.feature.player.state.OnlineSubtitleSearchUiState
 import one.only.player.feature.player.state.SubtitleOptionsEvent
 import one.only.player.feature.player.state.VideoZoomEvent
+import one.only.player.feature.player.subtitle.OnlineSubtitleRepository
 
 private fun Float.normalizeVideoFilter(
     minimumValue: Float,
@@ -79,6 +93,9 @@ class PlayerViewModel @Inject constructor(
     private val playbackMarkRepository: PlaybackMarkRepository,
     private val preferencesRepository: PreferencesRepository,
     private val subtitleFontRepository: SubtitleFontRepository,
+    private val onlineSubtitleRepository: OnlineSubtitleRepository,
+    private val searchOnlineSubtitlesUseCase: SearchOnlineSubtitlesUseCase,
+    private val downloadOnlineSubtitleUseCase: DownloadOnlineSubtitleUseCase,
     private val getSortedPlaylistUseCase: GetSortedPlaylistUseCase,
 ) : ViewModel() {
 
@@ -99,6 +116,17 @@ class PlayerViewModel @Inject constructor(
         ),
     )
     val uiState = internalUiState.asStateFlow()
+
+    private val internalOnlineSubtitleSearch = MutableStateFlow(OnlineSubtitleSearchUiState())
+    val onlineSubtitleSearch = internalOnlineSubtitleSearch.asStateFlow()
+
+    // 下载与挂载分居数据层与播放服务，只推送一次性事件，避免重复挂载
+    private val internalOnlineSubtitleEvents = Channel<OnlineSubtitleEvent>(Channel.BUFFERED)
+    val onlineSubtitleEvents = internalOnlineSubtitleEvents.receiveAsFlow()
+    private var subtitleSearchJob: Job? = null
+    private var subtitleDownloadJob: Job? = null
+    private var subtitleMediaId: String? = null
+    private var hasEditedSubtitleQuery = false
     private val playbackMarkMediaUri = MutableStateFlow<String?>(null)
 
     // 仅保留当前媒体有效帧，供界面重建后继续显示。
@@ -422,6 +450,100 @@ class PlayerViewModel @Inject constructor(
     }
 
     fun resolvePlaybackStateUri(mediaItem: MediaItem): String = mediaItem.toPlaybackStateUri()
+
+    fun updateOnlineSubtitleMediaItem(
+        mediaItem: MediaItem?,
+        title: String?,
+    ) {
+        val mediaId = mediaItem?.mediaId
+        val query = mediaItem.toSearchQuery(title)
+        if (subtitleMediaId == mediaId) {
+            if (hasEditedSubtitleQuery || query == internalOnlineSubtitleSearch.value.query) return
+            subtitleSearchJob?.cancel()
+            internalOnlineSubtitleSearch.update { it.copy(query = query, outcome = null) }
+            return
+        }
+        subtitleMediaId = mediaId
+        hasEditedSubtitleQuery = false
+        subtitleSearchJob?.cancel()
+        subtitleDownloadJob?.cancel()
+        internalOnlineSubtitleSearch.update {
+            OnlineSubtitleSearchUiState(
+                query = query,
+                languageFilter = it.languageFilter,
+                providers = it.providers,
+            )
+        }
+    }
+
+    fun onOnlineSubtitleQueryChange(query: String) {
+        hasEditedSubtitleQuery = true
+        subtitleSearchJob?.cancel()
+        internalOnlineSubtitleSearch.update { it.copy(query = query, outcome = null) }
+    }
+
+    fun onOnlineSubtitleLanguageFilterChange(languageFilter: OnlineSubtitleLanguageFilter) {
+        subtitleSearchJob?.cancel()
+        internalOnlineSubtitleSearch.update { it.copy(languageFilter = languageFilter, outcome = null) }
+    }
+
+    fun onOnlineSubtitleProviderToggle(provider: OnlineSubtitleProvider) {
+        val currentProviders = internalOnlineSubtitleSearch.value.providers
+        if (currentProviders == setOf(provider)) return
+        subtitleSearchJob?.cancel()
+        internalOnlineSubtitleSearch.update { state ->
+            val providers = state.providers.toMutableSet().apply {
+                if (!add(provider)) remove(provider)
+            }
+            state.copy(providers = providers, outcome = null)
+        }
+    }
+
+    fun onSearchOnlineSubtitles() {
+        val state = internalOnlineSubtitleSearch.value
+        if (state.isSearching || state.query.isBlank()) return
+
+        internalOnlineSubtitleSearch.update { it.copy(outcome = DataState.Loading) }
+        subtitleSearchJob = viewModelScope.launch {
+            val outcome = try {
+                DataState.Success(
+                    searchOnlineSubtitlesUseCase(
+                        query = state.query,
+                        languageFilter = state.languageFilter,
+                        providers = state.providers,
+                    ),
+                )
+            } catch (exception: CancellationException) {
+                throw exception
+            } catch (exception: Exception) {
+                Logger.error(TAG, "Online subtitle search failed", exception)
+                DataState.Error(exception)
+            }
+            internalOnlineSubtitleSearch.update { it.copy(outcome = outcome) }
+        }
+    }
+
+    fun onDownloadOnlineSubtitle(result: OnlineSubtitleResult) {
+        val mediaId = subtitleMediaId ?: return
+        if (internalOnlineSubtitleSearch.value.downloadingKey != null) return
+        internalOnlineSubtitleSearch.update { it.copy(downloadingKey = result.key) }
+        subtitleDownloadJob = viewModelScope.launch {
+            try {
+                val payload = downloadOnlineSubtitleUseCase(result)
+                val subtitle = onlineSubtitleRepository.importSubtitle(payload.bytes, payload.extension)
+                internalOnlineSubtitleEvents.send(OnlineSubtitleEvent.Saved(subtitle.uri, mediaId))
+            } catch (exception: CancellationException) {
+                throw exception
+            } catch (exception: Exception) {
+                Logger.error(TAG, "Online subtitle download failed", exception)
+                internalOnlineSubtitleEvents.send(OnlineSubtitleEvent.Failed(exception, mediaId))
+            } finally {
+                if (subtitleMediaId == mediaId) {
+                    internalOnlineSubtitleSearch.update { it.copy(downloadingKey = null) }
+                }
+            }
+        }
+    }
 
     private suspend fun MediaItem.toPlaybackMarkMediaUri(): String = buildRemotePlaybackStateKey(
         remoteProtocol = mediaMetadata.remoteProtocol,

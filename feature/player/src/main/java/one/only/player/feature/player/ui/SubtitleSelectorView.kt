@@ -67,6 +67,7 @@ fun BoxScope.SubtitleSelectorView(
     player: Player,
     onSelectSubtitleClick: () -> Unit,
     onAddOnlineSubtitleClick: (String) -> Unit,
+    onShowSubtitleSearch: () -> Unit,
     preferences: PlayerPreferences,
     onPreferencesChange: (PlayerPreferences) -> Unit,
     onEvent: (SubtitleOptionsEvent) -> Unit = {},
@@ -82,6 +83,7 @@ fun BoxScope.SubtitleSelectorView(
             player = player,
             onSelectSubtitleClick = onSelectSubtitleClick,
             onAddOnlineSubtitleClick = onAddOnlineSubtitleClick,
+            onShowSubtitleSearch = onShowSubtitleSearch,
             preferences = preferences,
             onPreferencesChange = onPreferencesChange,
             onEvent = onEvent,
@@ -96,6 +98,7 @@ fun SubtitleSelectorContent(
     player: Player,
     onSelectSubtitleClick: () -> Unit,
     onAddOnlineSubtitleClick: (String) -> Unit,
+    onShowSubtitleSearch: () -> Unit,
     preferences: PlayerPreferences,
     onPreferencesChange: (PlayerPreferences) -> Unit,
     onEvent: (SubtitleOptionsEvent) -> Unit = {},
@@ -150,6 +153,12 @@ fun SubtitleSelectorContent(
             onClick = {
                 isOnlineSubtitleDialogVisible = true
             },
+        )
+        Spacer(modifier = Modifier.size(12.dp))
+        PanelActionButton(
+            modifier = Modifier.testTag("btn_search_online_subtitle"),
+            text = stringResource(R.string.online_subtitle_search),
+            onClick = onShowSubtitleSearch,
         )
         Spacer(modifier = Modifier.size(16.dp))
         DelayInput(

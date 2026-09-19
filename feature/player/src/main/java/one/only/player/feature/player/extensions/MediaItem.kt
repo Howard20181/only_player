@@ -252,3 +252,68 @@ fun MediaItem.copy(
             },
         ).build(),
 ).build()
+
+// 默认搜索词保留片名和集数，去除视频扩展名与发布标签。
+fun MediaItem?.toSearchQuery(title: String?): String {
+    if (this == null) return ""
+
+    val uri = localConfiguration?.uri
+    val candidate = title?.trim().orEmpty().ifBlank {
+        uri?.takeIf { it.scheme != "content" }?.lastPathSegment?.trim().orEmpty()
+    }
+    if (candidate.isEmpty()) return ""
+
+    val extension = candidate.substringAfterLast('.', missingDelimiterValue = "").lowercase()
+    val name = if (extension in VIDEO_EXTENSIONS) candidate.substringBeforeLast('.') else candidate
+    return name.toSearchableTitle()
+}
+
+// 字幕接口按全词匹配，1080p/x265/WEB-DL 这类发布标签只会把命中面缩到零，从第一个标签起截断
+private fun String.toSearchableTitle(): String {
+    val tokens = BRACKET_GROUP_REGEX.replace(this, " ")
+        .split(SEARCH_TOKEN_REGEX)
+        .map { it.trim() }
+        .filter { it.isNotEmpty() }
+    val kept = tokens.takeWhile { !it.isReleaseTag() }
+    if (kept.none { token -> token.any { it.isLetter() } }) return this
+    return kept.joinToString(separator = " ").trim().ifEmpty { this }
+}
+
+private fun String.isReleaseTag(): Boolean {
+    val token = lowercase().trim('[', ']', '(', ')')
+    return RELEASE_TAG_REGEX.matches(token) || RELEASE_TAG_REGEX.matches(token.substringBefore('-'))
+}
+
+private val SEARCH_TOKEN_REGEX = Regex("[._\\s]+")
+
+// [YTS.MX]、(2021) 这类括号段是元数据，先整体剔除再分词
+private val BRACKET_GROUP_REGEX = Regex("\\[[^\\]]*]|\\([^)]*\\)")
+
+private val RELEASE_TAG_REGEX = Regex(
+    "(\\d{3,4}[pi]|4k|8k|uhd|hdr\\d*|sdr|dolbyvision|10bit|8bit|x26\\d|h26\\d|hevc|avc|xvid|divx|" +
+        "web-?dl|webrip|web|blu-?ray|bdrip|brrip|dvdrip|dvd|hdtv|hdrip|remux|" +
+        "aac\\d*|ac3|eac3|dts(-hd)?|truehd|atmos|flac|opus|mp3|\\d\\.\\d|" +
+        "amzn|nf|dsnp|hmax|atvp|internal|proper|repack|extended|remastered|imax|yts(\\.[a-z]+)?|rarbg|yify)",
+)
+
+private val VIDEO_EXTENSIONS = setOf(
+    "3gp",
+    "avi",
+    "divx",
+    "f4v",
+    "flv",
+    "iso",
+    "m2ts",
+    "m4v",
+    "mkv",
+    "mov",
+    "mp4",
+    "mpeg",
+    "mpg",
+    "ogv",
+    "rmvb",
+    "ts",
+    "vob",
+    "webm",
+    "wmv",
+)
