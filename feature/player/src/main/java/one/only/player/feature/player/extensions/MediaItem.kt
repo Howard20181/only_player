@@ -4,6 +4,8 @@ import android.os.Bundle
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 
+private const val MEDIA_METADATA_ADDED_SUBTITLE_IDS_KEY = "added_subtitle_ids"
+
 private const val MEDIA_METADATA_POSITION_KEY = "media_metadata_position"
 private const val MEDIA_METADATA_PLAYBACK_SPEED_KEY = "media_metadata_playback_speed"
 private const val MEDIA_METADATA_AUDIO_TRACK_INDEX_KEY = "audio_track_index"
@@ -43,6 +45,7 @@ private fun Bundle.setExtras(
     remoteProtocol: String? = null,
     localParentPath: String? = null,
     remoteDirectoryPath: String? = null,
+    addedSubtitleIds: List<String>? = null,
 ) = apply {
     positionMs?.let { putLong(MEDIA_METADATA_POSITION_KEY, it) }
     videoScale?.let { putFloat(MEDIA_METADATA_VIDEO_ZOOM_KEY, it) }
@@ -61,6 +64,7 @@ private fun Bundle.setExtras(
     remoteProtocol?.let { putString(MEDIA_METADATA_REMOTE_PROTOCOL_KEY, it) }
     localParentPath?.let { putString(MEDIA_METADATA_LOCAL_PARENT_PATH_KEY, it) }
     remoteDirectoryPath?.let { putString(MEDIA_METADATA_REMOTE_DIRECTORY_PATH_KEY, it) }
+    addedSubtitleIds?.let { putStringArrayList(MEDIA_METADATA_ADDED_SUBTITLE_IDS_KEY, ArrayList(it)) }
 }
 
 fun MediaMetadata.Builder.setExtras(
@@ -82,6 +86,7 @@ fun MediaMetadata.Builder.setExtras(
     remoteProtocol: String? = null,
     localParentPath: String? = null,
     remoteDirectoryPath: String? = null,
+    addedSubtitleIds: List<String>? = null,
 ): MediaMetadata.Builder = setExtras(
     Bundle().setExtras(
         positionMs = positionMs,
@@ -101,6 +106,7 @@ fun MediaMetadata.Builder.setExtras(
         remoteProtocol = remoteProtocol,
         localParentPath = localParentPath,
         remoteDirectoryPath = remoteDirectoryPath,
+        addedSubtitleIds = addedSubtitleIds,
     ).apply {
         requestHeaders.forEach { (key, value) ->
             putString("$MEDIA_METADATA_REQUEST_HEADERS_PREFIX$key", value)
@@ -223,6 +229,7 @@ fun MediaItem.copy(
     remoteProtocol: String? = this.mediaMetadata.remoteProtocol,
     localParentPath: String? = this.mediaMetadata.localParentPath,
     remoteDirectoryPath: String? = this.mediaMetadata.remoteDirectoryPath,
+    addedSubtitleIds: List<String> = this.mediaMetadata.addedSubtitleIds,
 ): MediaItem = buildUpon().setMediaMetadata(
     mediaMetadata.buildUpon()
         .setDurationMs(durationMs)
@@ -245,6 +252,7 @@ fun MediaItem.copy(
                 remoteProtocol = remoteProtocol,
                 localParentPath = localParentPath,
                 remoteDirectoryPath = remoteDirectoryPath,
+                addedSubtitleIds = addedSubtitleIds,
             ).apply {
                 requestHeaders.forEach { (key, value) ->
                     putString("$MEDIA_METADATA_REQUEST_HEADERS_PREFIX$key", value)
@@ -317,3 +325,6 @@ private val VIDEO_EXTENSIONS = setOf(
     "webm",
     "wmv",
 )
+
+val MediaMetadata.addedSubtitleIds: List<String>
+    get() = extras?.getStringArrayList(MEDIA_METADATA_ADDED_SUBTITLE_IDS_KEY).orEmpty()

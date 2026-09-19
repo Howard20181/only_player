@@ -163,6 +163,7 @@ import one.only.player.feature.player.ui.MenuRootContent
 import one.only.player.feature.player.ui.MenuRoute
 import one.only.player.feature.player.ui.OnlineSubtitleLanguageContent
 import one.only.player.feature.player.ui.OnlineSubtitleSearchContent
+import one.only.player.feature.player.ui.OnlineSubtitleSearchSettingsContent
 import one.only.player.feature.player.ui.PlaybackMarksContent
 import one.only.player.feature.player.ui.PlaybackSpeedSelectorContent
 import one.only.player.feature.player.ui.PlaylistContent
@@ -230,6 +231,7 @@ internal fun MediaPlayerScreen(
     modifier: Modifier = Modifier,
     onSelectSubtitleClick: () -> Unit,
     onAddOnlineSubtitleClick: (String) -> Unit,
+    onRemoveSubtitleClick: (String) -> Unit,
     onBackClick: () -> Unit,
     onPlayInBackgroundClick: () -> Unit,
     isTakingScreenshot: Boolean = false,
@@ -1094,6 +1096,20 @@ internal fun MediaPlayerScreen(
                 },
                 onDismiss = ::dismissOverlay,
                 trailingActions = when (currentRoute) {
+                    MenuRoute.SubtitleSearch -> {
+                        {
+                            MiuixIconButton(
+                                modifier = Modifier.testTag("btn_online_subtitle_settings"),
+                                onClick = { navigateToMenuRoute(MenuRoute.SubtitleSearchSettings) },
+                            ) {
+                                MiuixIcon(
+                                    imageVector = AppIcons.Settings,
+                                    contentDescription = stringResource(coreUiR.string.online_subtitle_search_settings),
+                                    tint = menuPanelTokens.contentColor,
+                                )
+                            }
+                        }
+                    }
                     MenuRoute.VideoFilters -> {
                         {
                             MiuixIconButton(
@@ -1171,6 +1187,7 @@ internal fun MediaPlayerScreen(
                         player = player,
                         onSelectSubtitleClick = onSelectSubtitleClick,
                         onAddOnlineSubtitleClick = onAddOnlineSubtitleClick,
+                        onRemoveSubtitleClick = onRemoveSubtitleClick,
                         onShowSubtitleSearch = { navigateToMenuRoute(MenuRoute.SubtitleSearch) },
                         preferences = activePlayerPreferences,
                         onPreferencesChange = ::updateSubtitleStyle,
@@ -1181,18 +1198,22 @@ internal fun MediaPlayerScreen(
                     MenuRoute.SubtitleSearch -> OnlineSubtitleSearchContent(
                         state = onlineSubtitleSearch,
                         onQueryChange = viewModel::onOnlineSubtitleQueryChange,
-                        onShowLanguageFilter = { navigateToMenuRoute(MenuRoute.SubtitleSearchLanguage) },
-                        onProviderToggle = viewModel::onOnlineSubtitleProviderToggle,
                         onSearch = viewModel::onSearchOnlineSubtitles,
                         onSelectResult = viewModel::onDownloadOnlineSubtitle,
                     )
 
                     MenuRoute.SubtitleSearchLanguage -> OnlineSubtitleLanguageContent(
-                        selected = onlineSubtitleSearch.languageFilter,
+                        selected = onlineSubtitleSearch.preferences.languageFilter,
                         onSelect = {
                             viewModel.onOnlineSubtitleLanguageFilterChange(it)
                             popMenuRoute()
                         },
+                    )
+
+                    MenuRoute.SubtitleSearchSettings -> OnlineSubtitleSearchSettingsContent(
+                        preferences = onlineSubtitleSearch.preferences,
+                        onShowLanguageFilter = { navigateToMenuRoute(MenuRoute.SubtitleSearchLanguage) },
+                        onProviderToggle = viewModel::onOnlineSubtitleProviderToggle,
                     )
 
                     MenuRoute.PlaybackSpeed -> PlaybackSpeedSelectorContent(player = player)
@@ -1433,6 +1454,7 @@ private fun titleForMenuRoute(
     MenuRoute.Audio -> stringResource(coreUiR.string.select_audio_track)
     MenuRoute.Subtitle -> stringResource(coreUiR.string.select_subtitle_track)
     MenuRoute.SubtitleSearch -> stringResource(coreUiR.string.online_subtitle_search)
+    MenuRoute.SubtitleSearchSettings -> stringResource(coreUiR.string.online_subtitle_search_settings)
     MenuRoute.SubtitleSearchLanguage -> stringResource(coreUiR.string.online_subtitle_search_language)
     MenuRoute.PlaybackSpeed -> stringResource(coreUiR.string.select_playback_speed)
     MenuRoute.VideoContentScale -> stringResource(coreUiR.string.video_zoom)

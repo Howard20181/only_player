@@ -1,6 +1,9 @@
 package one.only.player.core.model
 
+import kotlinx.serialization.Serializable
+
 // 在线字幕来源；同一份内容可能由不同来源给出，结果需要标注来源
+@Serializable
 enum class OnlineSubtitleProvider {
     OPEN_SUBTITLES,
     OPEN_SUBTITLES_XML_RPC,
@@ -109,6 +112,7 @@ object OnlineSubtitleLanguage {
 }
 
 // 界面可筛选的语言；provider 各自的语言码写法在数据层映射
+@Serializable
 enum class OnlineSubtitleLanguageFilter(val languageCode: String?) {
     ALL(null),
     CHINESE_SIMPLIFIED(OnlineSubtitleLanguage.SIMPLIFIED_CHINESE),
@@ -130,4 +134,18 @@ enum class OnlineSubtitleLanguageFilter(val languageCode: String?) {
     TURKISH(OnlineSubtitleLanguage.TURKISH),
     DUTCH(OnlineSubtitleLanguage.DUTCH),
     POLISH(OnlineSubtitleLanguage.POLISH),
+}
+
+@Serializable
+data class OnlineSubtitleSearchPreferences(
+    val languageFilter: OnlineSubtitleLanguageFilter = OnlineSubtitleLanguageFilter.ALL,
+    val providers: Set<OnlineSubtitleProvider> = setOf(
+        OnlineSubtitleProvider.OPEN_SUBTITLES,
+        OnlineSubtitleProvider.SUBTITLE_CAT,
+    ),
+) {
+    fun withProviderToggled(provider: OnlineSubtitleProvider): OnlineSubtitleSearchPreferences {
+        if (providers == setOf(provider)) return this
+        return copy(providers = if (provider in providers) providers - provider else providers + provider)
+    }
 }

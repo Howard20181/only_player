@@ -308,6 +308,12 @@
     <string name="online_subtitle_empty">在线字幕为空</string>
     <string name="online_subtitle_download_failed">下载在线字幕失败</string>
     <string name="online_subtitle_downloading">正在下载字幕…</string>
+    <string name="online_subtitle_search_settings">字幕搜索设置</string>
+    <string name="online_subtitle_default_language">默认搜索语言</string>
+    <string name="online_subtitle_default_sources">字幕来源</string>
+    <string name="remove_subtitle">移除字幕</string>
+    <string name="subtitle_removed">已移除字幕</string>
+    <string name="subtitle_remove_failed">移除字幕失败</string>
     <string name="online_subtitle_search">在线搜索字幕</string>
     <string name="online_subtitle_search_hint">片名或文件名</string>
     <string name="online_subtitle_search_action">搜索</string>

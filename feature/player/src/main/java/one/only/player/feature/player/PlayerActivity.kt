@@ -96,6 +96,7 @@ import one.only.player.feature.player.extensions.uriToSubtitleConfiguration
 import one.only.player.feature.player.service.PlayerService
 import one.only.player.feature.player.service.addSubtitleTrack
 import one.only.player.feature.player.service.hideCustomPictureInPicture
+import one.only.player.feature.player.service.removeSubtitleTrack
 import one.only.player.feature.player.service.showCustomPictureInPicture
 import one.only.player.feature.player.service.stopPlayerSession
 import one.only.player.feature.player.state.OnlineSubtitleEvent
@@ -307,6 +308,7 @@ open class PlayerActivity : AppCompatActivity() {
                     val messageResId = when (event) {
                         is OnlineSubtitleEvent.Saved -> attachOnlineSubtitle(event.uri, event.mediaId)
                         is OnlineSubtitleEvent.Failed -> event.cause.toOnlineSubtitleMessageResId()
+                        is OnlineSubtitleEvent.SearchFailed -> one.only.player.core.ui.R.string.online_subtitle_search_failed
                     }
                     showToast(messageResId)
                 }
@@ -352,6 +354,7 @@ open class PlayerActivity : AppCompatActivity() {
                         }
                     },
                     onAddOnlineSubtitleClick = ::addOnlineSubtitle,
+                    onRemoveSubtitleClick = ::removeAddedSubtitle,
                     onBackClick = { finishAndStopPlayerSession() },
                     onPlayInBackgroundClick = {
                         shouldPlayInBackground = true
@@ -499,6 +502,24 @@ open class PlayerActivity : AppCompatActivity() {
     } catch (exception: Exception) {
         Logger.error(TAG, "Failed to attach searched subtitle", exception)
         one.only.player.core.ui.R.string.online_subtitle_download_failed
+    }
+
+    private fun removeAddedSubtitle(subtitleId: String) {
+        lifecycleScope.launch {
+            try {
+                maybeInitControllerFuture()
+                val controller = controllerFuture?.await() ?: return@launch
+                val mediaId = controller.currentMediaItem?.mediaId ?: return@launch
+                val result = controller.removeSubtitleTrack(subtitleId, mediaId).await()
+                check(result.resultCode == androidx.media3.session.SessionResult.RESULT_SUCCESS)
+                showToast(one.only.player.core.ui.R.string.subtitle_removed)
+            } catch (exception: CancellationException) {
+                throw exception
+            } catch (exception: Exception) {
+                Logger.error(TAG, "Failed to remove external subtitle", exception)
+                showToast(one.only.player.core.ui.R.string.subtitle_remove_failed)
+            }
+        }
     }
 
     private fun showToast(messageResId: Int) {

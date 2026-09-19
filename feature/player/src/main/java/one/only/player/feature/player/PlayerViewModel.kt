@@ -117,7 +117,9 @@ class PlayerViewModel @Inject constructor(
     )
     val uiState = internalUiState.asStateFlow()
 
-    private val internalOnlineSubtitleSearch = MutableStateFlow(OnlineSubtitleSearchUiState())
+    private val internalOnlineSubtitleSearch = MutableStateFlow(
+        OnlineSubtitleSearchUiState(preferences = preferencesRepository.playerPreferences.value.onlineSubtitleSearchPreferences),
+    )
     val onlineSubtitleSearch = internalOnlineSubtitleSearch.asStateFlow()
 
     // 下载与挂载分居数据层与播放服务，只推送一次性事件，避免重复挂载
@@ -150,6 +152,12 @@ class PlayerViewModel @Inject constructor(
         viewModelScope.launch {
             preferencesRepository.playerPreferences.collect { prefs ->
                 internalUiState.update { it.copy(playerPreferences = prefs) }
+                if (internalOnlineSubtitleSearch.value.preferences != prefs.onlineSubtitleSearchPreferences) {
+                    subtitleSearchJob?.cancel()
+                    internalOnlineSubtitleSearch.update {
+                        it.copy(preferences = prefs.onlineSubtitleSearchPreferences, outcome = null)
+                    }
+                }
             }
         }
         viewModelScope.launch {
@@ -470,8 +478,7 @@ class PlayerViewModel @Inject constructor(
         internalOnlineSubtitleSearch.update {
             OnlineSubtitleSearchUiState(
                 query = query,
-                languageFilter = it.languageFilter,
-                providers = it.providers,
+                preferences = it.preferences,
             )
         }
     }
@@ -483,23 +490,23 @@ class PlayerViewModel @Inject constructor(
     }
 
     fun onOnlineSubtitleLanguageFilterChange(languageFilter: OnlineSubtitleLanguageFilter) {
-        subtitleSearchJob?.cancel()
-        internalOnlineSubtitleSearch.update { it.copy(languageFilter = languageFilter, outcome = null) }
+        viewModelScope.launch {
+            preferencesRepository.updatePlayerPreferences {
+                it.copy(onlineSubtitleSearchPreferences = it.onlineSubtitleSearchPreferences.copy(languageFilter = languageFilter))
+            }
+        }
     }
 
     fun onOnlineSubtitleProviderToggle(provider: OnlineSubtitleProvider) {
-        val currentProviders = internalOnlineSubtitleSearch.value.providers
-        if (currentProviders == setOf(provider)) return
-        subtitleSearchJob?.cancel()
-        internalOnlineSubtitleSearch.update { state ->
-            val providers = state.providers.toMutableSet().apply {
-                if (!add(provider)) remove(provider)
+        viewModelScope.launch {
+            preferencesRepository.updatePlayerPreferences {
+                it.copy(onlineSubtitleSearchPreferences = it.onlineSubtitleSearchPreferences.withProviderToggled(provider))
             }
-            state.copy(providers = providers, outcome = null)
         }
     }
 
     fun onSearchOnlineSubtitles() {
+        val mediaId = subtitleMediaId ?: return
         val state = internalOnlineSubtitleSearch.value
         if (state.isSearching || state.query.isBlank()) return
 
@@ -509,14 +516,15 @@ class PlayerViewModel @Inject constructor(
                 DataState.Success(
                     searchOnlineSubtitlesUseCase(
                         query = state.query,
-                        languageFilter = state.languageFilter,
-                        providers = state.providers,
+                        languageFilter = state.preferences.languageFilter,
+                        providers = state.preferences.providers,
                     ),
                 )
             } catch (exception: CancellationException) {
                 throw exception
             } catch (exception: Exception) {
                 Logger.error(TAG, "Online subtitle search failed", exception)
+                internalOnlineSubtitleEvents.send(OnlineSubtitleEvent.SearchFailed(mediaId))
                 DataState.Error(exception)
             }
             internalOnlineSubtitleSearch.update { it.copy(outcome = outcome) }

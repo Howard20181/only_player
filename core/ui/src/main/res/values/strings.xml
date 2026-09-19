@@ -315,6 +315,12 @@
     <string name="online_subtitle_empty">Online subtitle is empty</string>
     <string name="online_subtitle_download_failed">Failed to download online subtitle</string>
     <string name="online_subtitle_downloading">Downloading subtitle…</string>
+    <string name="online_subtitle_search_settings">Subtitle search settings</string>
+    <string name="online_subtitle_default_language">Default search language</string>
+    <string name="online_subtitle_default_sources">Subtitle sources</string>
+    <string name="remove_subtitle">Remove subtitle</string>
+    <string name="subtitle_removed">Subtitle removed</string>
+    <string name="subtitle_remove_failed">Failed to remove subtitle</string>
     <string name="online_subtitle_search">Search subtitles online</string>
     <string name="online_subtitle_search_hint">Title or file name</string>
     <string name="online_subtitle_search_action">Search</string>
