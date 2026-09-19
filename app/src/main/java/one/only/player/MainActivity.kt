@@ -57,6 +57,7 @@ import one.only.player.core.ui.composables.rememberRuntimePermissionState
 import one.only.player.core.ui.extensions.LocalRootBottomBarPadding
 import one.only.player.core.ui.theme.OnlyPlayerTheme
 import one.only.player.crash.StartupRecovery
+import one.only.player.crash.StartupStage
 import one.only.player.feature.player.PlayerActivity
 import one.only.player.feature.videopicker.navigation.navigateToHistory
 import one.only.player.feature.videopicker.navigation.navigateToPlaylists
@@ -132,7 +133,7 @@ class MainActivity : AppCompatActivity() {
 
     @OptIn(ExperimentalComposeUiApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
-        StartupRecovery.begin(this)
+        StartupRecovery.begin(application, StartupStage.MAIN_ACTIVITY)
 
         val persistedStartupPreferences = StartupPreferencesCache.consume(context = this)
         val bootstrapTheme = resolveBootstrapTheme(
@@ -214,7 +215,7 @@ class MainActivity : AppCompatActivity() {
 
         window.decorView.doOnPreDraw {
             window.decorView.post {
-                StartupRecovery.markReady(this@MainActivity)
+                StartupRecovery.markReady()
             }
         }
     }

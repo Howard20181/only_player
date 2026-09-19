@@ -434,7 +434,8 @@
     <string name="sleep_timer_remaining">Remaining</string>
     <string name="crash_screen_title">Crash logs</string>
     <string name="crash_screen_share">Share crash logs</string>
-    <string name="crash_screen_copy">Copy crash log</string>
+    <string name="crash_screen_copy">Copy error summary</string>
+    <string name="crash_screen_report_description">This page previews the report. Share or save it to include the full diagnostics and app logs; copying includes only the error summary.</string>
     <string name="crash_screen_restart">Restart the app</string>
     <string name="crash_screen_feedback_toast">The app crashed unexpectedly. Please include the crash log when reporting the issue.</string>
     <string name="crash_screen_startup_timeout">The app did not finish starting within %1$d seconds. It has opened the recovery page so you can inspect and share the logs.</string>

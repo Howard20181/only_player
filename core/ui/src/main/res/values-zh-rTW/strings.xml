@@ -415,7 +415,8 @@
     <string name="shuffle">隨機播放</string>
     <string name="crash_screen_title">崩潰記錄</string>
     <string name="crash_screen_share">分享錯誤報告</string>
-    <string name="crash_screen_copy">複製錯誤記錄</string>
+    <string name="crash_screen_copy">複製錯誤摘要</string>
+    <string name="crash_screen_report_description">此頁僅顯示報告預覽。分享或儲存可匯出完整診斷資訊和應用程式記錄，複製僅包含錯誤摘要。</string>
     <string name="crash_screen_restart">重新啟動應用程式</string>
     <string name="crash_screen_feedback_toast">應用程式意外崩潰，請附上記錄回報</string>
     <string name="crash_screen_startup_timeout">應用程式啟動超過 %1$d 秒仍未完成，已進入復原頁面，你可以查看並分享記錄。</string>

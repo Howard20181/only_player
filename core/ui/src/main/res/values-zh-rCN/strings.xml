@@ -413,7 +413,8 @@
     <string name="reset_default_playback_speed">重置默认播放速度</string>
     <string name="crash_screen_title">崩溃日志</string>
     <string name="crash_screen_share">分享崩溃日志</string>
-    <string name="crash_screen_copy">复制崩溃日志</string>
+    <string name="crash_screen_copy">复制异常摘要</string>
+    <string name="crash_screen_report_description">页面仅展示报告预览。分享或保存可导出完整诊断信息和应用日志，复制仅包含异常摘要。</string>
     <string name="crash_screen_restart">重启应用</string>
     <string name="crash_screen_feedback_toast">应用意外崩溃，请携带日志反馈</string>
     <string name="crash_screen_startup_timeout">应用启动超过 %1$d 秒仍未完成，已进入恢复页面，你可以查看并分享日志。</string>
