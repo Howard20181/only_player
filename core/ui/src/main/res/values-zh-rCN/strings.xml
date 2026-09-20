@@ -59,7 +59,7 @@
     <string name="video_filters">视频滤镜</string>
     <string name="enable_video_filters">启用视频滤镜</string>
     <string name="enable_video_filters_description">关闭后跳过 GPU 视频滤镜以节省电量</string>
-    <string name="video_filters_unavailable_software_decoder">软解码不支持视频滤镜</string>
+    <string name="video_filters_unavailable">当前视频或解码方式不支持视频滤镜</string>
     <string name="shortest">最短</string>
     <string name="longest">最长</string>
     <string name="smallest">最小</string>

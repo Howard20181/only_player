@@ -74,7 +74,7 @@
     <string name="video_filters">Video filters</string>
     <string name="enable_video_filters">Enable video filters</string>
     <string name="enable_video_filters_description">Turn this off to skip GPU video filtering and save battery</string>
-    <string name="video_filters_unavailable_software_decoder">The software decoder does not support video filters</string>
+    <string name="video_filters_unavailable">Video filters are unavailable for this video or decoder</string>
     <string name="a_z">A-Z</string>
     <string name="z_a">Z-A</string>
     <string name="shortest">Shortest</string>

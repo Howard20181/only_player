@@ -45,7 +45,8 @@ internal class VideoEffectsCoordinator(
         get() = isCurrentVideoHdr
 
     val isEffectActive: Boolean
-        get() = (activeFilterEffect != null && currentState.filters.shouldCreateEffect()) || activeAmbientEffect != null
+        get() = isAvailable() &&
+            ((activeFilterEffect != null && currentState.filters.shouldCreateEffect()) || activeAmbientEffect != null)
 
     fun setDecoderPriority(decoderPriority: DecoderPriority) {
         activeDecoderPriority = decoderPriority
@@ -85,6 +86,7 @@ internal class VideoEffectsCoordinator(
     ) {
         currentFormat = format
         isCurrentVideoHdr = format.isHdrVideoFormat()
+        player?.let(::updateAvailability)
     }
 
     fun markFirstFrameRendered(
@@ -163,7 +165,7 @@ internal class VideoEffectsCoordinator(
         Logger.debug(TAG, "Video effects availability: available=$isVideoEffectsAvailable decoder=$activeDecoderPriority")
     }
 
-    fun isAvailable(): Boolean = shouldApplyVideoEffects(activeDecoderPriority)
+    fun isAvailable(): Boolean = shouldApplyVideoEffects(activeDecoderPriority, currentFormat)
 
     private fun schedule(
         player: ExoPlayer,
@@ -254,7 +256,7 @@ internal class VideoEffectsCoordinator(
         decoderPriority: DecoderPriority,
         nextTransition: VideoFilterTransition,
     ) {
-        if (!shouldApplyVideoEffects(decoderPriority)) {
+        if (!isAvailable()) {
             currentState = VideoEffectsState(
                 filters = videoFilters,
                 decoderPriority = decoderPriority,
@@ -394,5 +396,5 @@ internal fun PlayerPreferences.toVideoFilterPreferences(): VideoFilterPreference
 
 internal fun Format.isHdrVideoFormat(): Boolean {
     val transfer = colorInfo?.colorTransfer
-    return transfer == C.COLOR_TRANSFER_ST2084 || transfer == C.COLOR_TRANSFER_HLG
+    return isDolbyVisionVideoFormat() || transfer == C.COLOR_TRANSFER_ST2084 || transfer == C.COLOR_TRANSFER_HLG
 }

@@ -394,8 +394,13 @@ internal fun MediaPlayerScreen(
     var isVideoMirrored by remember { mutableStateOf(false) }
     var isSaveFilterPresetDialogVisible by remember { mutableStateOf(false) }
     var isSaveEqualizerPresetDialogVisible by remember { mutableStateOf(false) }
+    LaunchedEffect(metadataState.isVideoEffectsAvailable) {
+        if (metadataState.isVideoEffectsAvailable) return@LaunchedEffect
+        menuRouteStack = menuRouteStack.takeWhile { it != MenuRoute.VideoFilters }
+        isSaveFilterPresetDialogVisible = false
+    }
     val activePlayerPreferences = subtitleStylePreviewPreferences ?: playerPreferences
-    val videoFiltersUnavailableMessage = stringResource(coreUiR.string.video_filters_unavailable_software_decoder)
+    val videoFiltersUnavailableMessage = stringResource(coreUiR.string.video_filters_unavailable)
     fun updateSubtitleStyle(preferences: PlayerPreferences) {
         subtitleStylePreviewPreferences = preferences
         viewModel.updateSubtitleStyle(preferences)

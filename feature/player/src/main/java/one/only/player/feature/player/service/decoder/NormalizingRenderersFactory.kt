@@ -34,19 +34,23 @@ class NormalizingRenderersFactory(
         allowedVideoJoiningTimeMs: Long,
         out: ArrayList<Renderer>,
     ) {
+        fun newRendererBuilder() = MediaCodecVideoRenderer.Builder(context)
+            .setCodecAdapterFactory(codecAdapterFactory)
+            .setMediaCodecSelector(mediaCodecSelector)
+            .setAllowedJoiningTimeMs(allowedVideoJoiningTimeMs)
+            .setEnableDecoderFallback(enableDecoderFallback)
+            .setEventHandler(eventHandler)
+            .setEventListener(eventListener)
+            .setMaxDroppedFramesToNotify(MAX_DROPPED_VIDEO_FRAME_COUNT_TO_NOTIFY)
+
+        val firstVideoRendererIndex = out.size
         val hardwareRenderer = VideoEffectsRenderer(
-            builder = MediaCodecVideoRenderer.Builder(context)
-                .setCodecAdapterFactory(codecAdapterFactory)
-                .setMediaCodecSelector(mediaCodecSelector)
-                .setAllowedJoiningTimeMs(allowedVideoJoiningTimeMs)
-                .setEnableDecoderFallback(enableDecoderFallback)
-                .setEventHandler(eventHandler)
-                .setEventListener(eventListener)
-                .setMaxDroppedFramesToNotify(MAX_DROPPED_VIDEO_FRAME_COUNT_TO_NOTIFY),
+            builder = newRendererBuilder(),
             eventHandler = eventHandler,
             eventListener = eventListener,
         )
         out.add(hardwareRenderer)
+        out.add(DolbyVisionVideoRenderer(newRendererBuilder()))
         if (extensionRendererMode == EXTENSION_RENDERER_MODE_OFF) return
 
         val softwareRenderer = FfmpegVideoRenderer(
@@ -56,7 +60,7 @@ class NormalizingRenderersFactory(
             MAX_DROPPED_VIDEO_FRAME_COUNT_TO_NOTIFY,
         )
         val extensionRendererIndex = if (extensionRendererMode == EXTENSION_RENDERER_MODE_PREFER) {
-            out.lastIndex
+            firstVideoRendererIndex
         } else {
             out.size
         }
