@@ -271,6 +271,7 @@ File(path.value).delete()
 ## Git Workflow
 
 - 创建提交、修改提交信息或整理提交历史前，必须阅读并遵守 [commit 技能](.codex/skills/commit/SKILL.md)，提交信息格式以该技能为准。
+- 创建、说明或合并 Pull Request 前，必须阅读并遵守 [pr 技能](.codex/skills/pr/SKILL.md)。功能 PR 打向 `dev`，只有晋升正式版时才把 `dev` 打向 `main`。
 - 任务每完成一部分就对该部分改动发起 commit，不要等全部做完再一次性提交
 - 除非用户明确要求，不得擅自执行 git push；推送前必须说明待推送的提交内容并等待用户确认
 
