@@ -77,15 +77,15 @@ jobs:
 
           IFS=. read -r major minor patch <<< "${stable}"
           target="${major}.${minor}.$((patch + 1))"
-          dev=0
+          beta=0
           while IFS= read -r tag; do
-            if [[ "${tag}" =~ ^v?${target//./\.}-dev([0-9]+)$ ]] && [ "${BASH_REMATCH[1]}" -gt "${dev}" ]; then
-              dev="${BASH_REMATCH[1]}"
+            if [[ "${tag}" =~ ^v?${target//./\.}-beta([0-9]+)$ ]] && [ "${BASH_REMATCH[1]}" -gt "${beta}" ]; then
+              beta="${BASH_REMATCH[1]}"
             fi
           done <<< "${tags}"
 
-          if [ "${dev}" -gt 0 ]; then
-            previous_tag="v${target}-dev${dev}"
+          if [ "${beta}" -gt 0 ]; then
+            previous_tag="v${target}-beta${beta}"
           else
             stable_tag="v${stable}"
             baseline_tag="dev-base/${stable_tag}"
@@ -96,7 +96,7 @@ jobs:
             fi
           fi
 
-          version="${target}-dev$((dev + 1))"
+          version="${target}-beta$((beta + 1))"
           version_code="$((props_code + 1))"
           printf 'version=%s\nversion_code=%s\ntag=v%s\nprevious_tag=%s\n' \
             "${version}" "${version_code}" "${version}" "${previous_tag}" | tee -a "$GITHUB_OUTPUT"

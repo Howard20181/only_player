@@ -107,14 +107,14 @@ class AppUpdateChecker @Inject constructor(
 
 private fun RemoteRelease.matchesChannel(channel: UpdateChannel): Boolean = when (channel) {
     UpdateChannel.TEST -> true
-    UpdateChannel.STABLE -> !isPrerelease && parseVersion(version)?.devNumber == null
+    UpdateChannel.STABLE -> !isPrerelease && parseVersion(version)?.betaNumber == null
 }
 
 private data class ParsedVersion(
     val major: Int,
     val minor: Int,
     val patch: Int,
-    val devNumber: Int?,
+    val betaNumber: Int?,
 )
 
 private fun parseVersion(raw: String): ParsedVersion? {
@@ -123,11 +123,11 @@ private fun parseVersion(raw: String): ParsedVersion? {
         major = match.groupValues[1].toInt(),
         minor = match.groupValues[2].toInt(),
         patch = match.groupValues[3].toInt(),
-        devNumber = match.groupValues[4].takeIf { it.isNotEmpty() }?.toInt(),
+        betaNumber = match.groupValues[4].takeIf { it.isNotEmpty() }?.toInt(),
     )
 }
 
-// 正数表示 v1 更新，负数表示 v2 更新。同版本时正式版高于开发版。
+// 正数表示 v1 更新，负数表示 v2 更新。同版本时正式版高于测试版。
 private fun compareVersions(v1: String, v2: String): Int {
     val parsed1 = parseVersion(v1)
     val parsed2 = parseVersion(v2)
@@ -138,14 +138,14 @@ private fun compareVersions(v1: String, v2: String): Int {
     val coreComparison = compareValuesBy(parsed1, parsed2, { it.major }, { it.minor }, { it.patch })
     if (coreComparison != 0) return coreComparison
 
-    val dev1 = parsed1.devNumber
-    val dev2 = parsed2.devNumber
+    val beta1 = parsed1.betaNumber
+    val beta2 = parsed2.betaNumber
     return when {
-        dev1 == null && dev2 == null -> 0
-        dev1 == null -> 1
-        dev2 == null -> -1
-        else -> dev1.compareTo(dev2)
+        beta1 == null && beta2 == null -> 0
+        beta1 == null -> 1
+        beta2 == null -> -1
+        else -> beta1.compareTo(beta2)
     }
 }
 
-private val VERSION_PATTERN = Regex("""^(\d+)\.(\d+)\.(\d+)(?:-dev(\d+))?$""")
+private val VERSION_PATTERN = Regex("""^(\d+)\.(\d+)\.(\d+)(?:-beta(\d+))?$""")
