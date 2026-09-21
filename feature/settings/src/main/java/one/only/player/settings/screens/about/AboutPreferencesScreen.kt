@@ -156,15 +156,6 @@ private fun UpdateSection(
 
     PreferenceGroup {
         ClickablePreferenceItem(
-            modifier = Modifier.testTag("item_settings_about_update_channel"),
-            title = stringResource(R.string.update_channel),
-            description = uiState.updateChannel.name(),
-            icon = AppIcons.ExtraSettings,
-            onClick = {
-                onEvent(AboutPreferencesUiEvent.ShowDialog(AboutPreferenceDialog.UpdateChannel))
-            },
-        )
-        ClickablePreferenceItem(
             modifier = Modifier.testTag("item_settings_about_check_updates"),
             title = stringResource(R.string.check_for_updates),
             description = updateStatusText(uiState.updateState),
@@ -180,6 +171,15 @@ private fun UpdateSection(
                     UpdateState.Error,
                     -> onEvent(AboutPreferencesUiEvent.CheckForUpdates(currentVersionName))
                 }
+            },
+        )
+        ClickablePreferenceItem(
+            modifier = Modifier.testTag("item_settings_about_update_channel"),
+            title = stringResource(R.string.update_channel),
+            description = uiState.updateChannel.name(),
+            icon = AppIcons.Transfer,
+            onClick = {
+                onEvent(AboutPreferencesUiEvent.ShowDialog(AboutPreferenceDialog.UpdateChannel))
             },
         )
         PreferenceSwitch(
