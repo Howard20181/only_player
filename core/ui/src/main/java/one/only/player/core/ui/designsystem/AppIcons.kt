@@ -101,6 +101,7 @@ object AppIcons {
     val TextColor: ImageVector get() = MingCuteTextColor
     val Timer: ImageVector get() = MingCuteTimer
     val Title: ImageVector get() = MingCuteTitle
+    val Transfer: ImageVector get() = MingCuteTransfer
     val Update: ImageVector get() = MingCuteUpdate
     val Video: ImageVector get() = MingCuteVideo
     val VolumeUp: ImageVector get() = MingCuteVolumeUp

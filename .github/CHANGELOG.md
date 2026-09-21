@@ -1,5 +1,5 @@
-- Try to fix washed-out Dolby Vision colors by skipping video filters for those videos
+- Add an update channel option to follow stable or test releases
 
 ---
 
-- 尝试修复杜比视界视频颜色发灰的问题，播放时不再套用视频滤镜
+- 新增更新通道选项，可以跟随稳定版或测试版

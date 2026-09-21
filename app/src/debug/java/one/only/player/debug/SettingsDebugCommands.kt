@@ -27,6 +27,7 @@ import one.only.player.core.model.SubtitleColor
 import one.only.player.core.model.SubtitleEdgeStyle
 import one.only.player.core.model.ThemeConfig
 import one.only.player.core.model.ThumbnailGenerationStrategy
+import one.only.player.core.model.UpdateChannel
 import one.only.player.core.model.VideoFilterPreset
 import one.only.player.core.model.toAudioEqualizerPreset
 import one.only.player.core.model.toVideoFilterPreset
@@ -348,6 +349,10 @@ internal suspend fun DebugCommandEntryPoint.setSetting(
         "privacy.prevent_screenshots" -> updateApplicationBoolean(value) { preferences, isEnabled -> preferences.copy(shouldPreventScreenshots = isEnabled) }
         "privacy.hide_in_recents" -> updateApplicationBoolean(value) { preferences, isEnabled -> preferences.copy(shouldHideInRecents = isEnabled) }
         "about.check_updates_on_startup" -> updateApplicationBoolean(value) { preferences, isEnabled -> preferences.copy(shouldCheckForUpdatesOnStartup = isEnabled) }
+        "about.update_channel" -> {
+            val updateChannel = enumValue<UpdateChannel>(value.requiredString(EXTRA_VALUE))
+            preferencesRepository().updateApplicationPreferences { it.copy(updateChannel = updateChannel) }
+        }
         else -> error("Unknown setting target: $target")
     }
 }
