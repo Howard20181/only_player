@@ -28,7 +28,7 @@ permissions:
 jobs:
   validate-branch:
     name: 校验正式版分支
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: 要求在 main 分支运行
         shell: bash
@@ -37,7 +37,7 @@ jobs:
   detect-version-change:
     name: 检测版本号变更
     needs: validate-branch
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       should_build: ${{ steps.detect.outputs.should_build }}
     steps:
@@ -76,7 +76,7 @@ jobs:
     name: 准备发布信息
     needs: detect-version-change
     if: needs.detect-version-change.outputs.should_build == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       application_id: ${{ steps.app.outputs.application_id }}
       version_name: ${{ steps.app.outputs.version_name }}
@@ -204,7 +204,7 @@ jobs:
   build:
     name: 签名构建 (${{ matrix.abi }})
     needs: prepare
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     strategy:
       fail-fast: false
@@ -278,7 +278,7 @@ jobs:
   release:
     name: 创建 GitHub 发布
     needs: [prepare, build]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: ${{ needs.build.result == 'success' && (github.event_name != 'workflow_dispatch' || github.event.inputs.create_release == 'true') }}
     steps:
       - name: 检出代码

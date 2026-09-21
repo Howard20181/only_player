@@ -17,7 +17,7 @@ permissions:
 jobs:
   prepare:
     name: 准备构建信息
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       application_id: ${{ steps.app.outputs.application_id }}
       version_name: ${{ steps.app.outputs.version_name }}
@@ -68,7 +68,7 @@ jobs:
   verify:
     name: 格式化与代码检查
     needs: prepare
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: 检出代码
         uses: actions/checkout@v6
@@ -104,7 +104,7 @@ jobs:
   detect-dev-build-changes:
     name: 检测开发版构建变更
     if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       should_build: ${{ steps.changes.outputs.should_build }}
     steps:
@@ -227,7 +227,7 @@ jobs:
         needs.detect-dev-build-changes.result == 'success' &&
         needs.detect-dev-build-changes.outputs.should_build != 'true'
       }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: 记录有意跳过
         shell: bash

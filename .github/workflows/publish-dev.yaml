@@ -14,7 +14,7 @@ permissions:
 jobs:
   validate-branch:
     name: 校验开发分支
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: 要求在 dev 分支运行
         shell: bash
@@ -23,7 +23,7 @@ jobs:
   prepare:
     name: 准备开发版信息
     needs: validate-branch
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       application_id: ${{ steps.app.outputs.application_id }}
       version: ${{ steps.ver.outputs.version }}
@@ -188,7 +188,7 @@ jobs:
     name: 签名构建 (${{ matrix.abi }})
     needs: prepare
     if: needs.prepare.outputs.can_build == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     strategy:
       fail-fast: false
@@ -273,7 +273,7 @@ jobs:
     name: 发布开发版
     needs: [prepare, build]
     if: ${{ needs.prepare.outputs.can_build == 'true' && needs.build.result == 'success' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: 下载所有构建产物
         uses: actions/download-artifact@v8
