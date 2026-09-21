@@ -36,6 +36,9 @@ sealed interface MenuRoute {
     data object PlaybackSpeed : MenuRoute
     data object Audio : MenuRoute
     data object Subtitle : MenuRoute
+    data object SubtitleSearch : MenuRoute
+    data object SubtitleSearchSettings : MenuRoute
+    data object SubtitleSearchLanguage : MenuRoute
     data object Playlist : MenuRoute
     data object VideoContentScale : MenuRoute
     data object VideoInfo : MenuRoute

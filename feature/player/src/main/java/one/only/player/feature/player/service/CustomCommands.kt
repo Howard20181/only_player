@@ -13,6 +13,7 @@ import one.only.player.feature.player.model.toVideoChapter
 
 enum class CustomCommands(val customAction: String) {
     ADD_SUBTITLE_TRACK(customAction = "ADD_SUBTITLE_TRACK"),
+    REMOVE_SUBTITLE_TRACK(customAction = "REMOVE_SUBTITLE_TRACK"),
     PRECISE_SEEK_TO(customAction = "PRECISE_SEEK_TO"),
     SET_SKIP_SILENCE_ENABLED(customAction = "SET_SKIP_SILENCE_ENABLED"),
     GET_SKIP_SILENCE_ENABLED(customAction = "GET_SKIP_SILENCE_ENABLED"),
@@ -45,6 +46,7 @@ enum class CustomCommands(val customAction: String) {
         fun asSessionCommands(): List<SessionCommand> = entries.map { it.sessionCommand }
 
         const val SUBTITLE_TRACK_URI_KEY = "subtitle_track_uri"
+        const val SUBTITLE_MEDIA_ID_KEY = "subtitle_media_id"
         const val SEEK_POSITION_MS_KEY = "seek_position_ms"
         const val SEEK_WAS_APPLIED_KEY = "seek_was_applied"
         const val SKIP_SILENCE_ENABLED_KEY = "skip_silence_enabled"
@@ -94,11 +96,15 @@ data class PlaybackStallMetrics(
     val totalDurationMs: Long,
 )
 
-fun MediaController.addSubtitleTrack(uri: Uri) {
+fun MediaController.addSubtitleTrack(
+    uri: Uri,
+    mediaId: String,
+): ListenableFuture<SessionResult> {
     val args = Bundle().apply {
         putString(CustomCommands.SUBTITLE_TRACK_URI_KEY, uri.toString())
+        putString(CustomCommands.SUBTITLE_MEDIA_ID_KEY, mediaId)
     }
-    sendCustomCommand(CustomCommands.ADD_SUBTITLE_TRACK.sessionCommand, args)
+    return sendCustomCommand(CustomCommands.ADD_SUBTITLE_TRACK.sessionCommand, args)
 }
 
 fun MediaController.preciseSeekTo(positionMs: Long): ListenableFuture<SessionResult> {
@@ -106,6 +112,17 @@ fun MediaController.preciseSeekTo(positionMs: Long): ListenableFuture<SessionRes
         putLong(CustomCommands.SEEK_POSITION_MS_KEY, positionMs)
     }
     return sendCustomCommand(CustomCommands.PRECISE_SEEK_TO.sessionCommand, args)
+}
+
+fun MediaController.removeSubtitleTrack(
+    subtitleId: String,
+    mediaId: String,
+): ListenableFuture<SessionResult> {
+    val args = Bundle().apply {
+        putString(CustomCommands.SUBTITLE_TRACK_URI_KEY, subtitleId)
+        putString(CustomCommands.SUBTITLE_MEDIA_ID_KEY, mediaId)
+    }
+    return sendCustomCommand(CustomCommands.REMOVE_SUBTITLE_TRACK.sessionCommand, args)
 }
 
 suspend fun MediaController.setSkipSilenceEnabled(isEnabled: Boolean) {

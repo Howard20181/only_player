@@ -70,19 +70,49 @@ fun Player.getManuallySelectedTrackIndex(trackType: @C.TrackType Int): Int? {
 fun Player.addAdditionalSubtitleConfiguration(subtitle: MediaItem.SubtitleConfiguration) {
     val currentMediaItemLocal = currentMediaItem ?: return
     val existingSubConfigurations = currentMediaItemLocal.localConfiguration?.subtitleConfigurations ?: emptyList()
+    val subtitleId = requireNotNull(subtitle.id)
+    val addedSubtitleIds = (currentMediaItemLocal.mediaMetadata.addedSubtitleIds + subtitleId).distinct()
 
     if (existingSubConfigurations.any { it.id == subtitle.id }) {
+        replaceMediaItem(currentMediaItemIndex, currentMediaItemLocal.copy(addedSubtitleIds = addedSubtitleIds))
         return
     }
 
     val updateMediaItem = currentMediaItemLocal
+        .copy(
+            positionMs = currentPosition,
+            addedSubtitleIds = addedSubtitleIds,
+        )
         .buildUpon()
         .setSubtitleConfigurations(existingSubConfigurations + listOf(subtitle))
         .build()
 
+    replaceCurrentSubtitleItem(updateMediaItem)
+}
+
+fun Player.removeAdditionalSubtitleConfiguration(
+    subtitleId: String,
+    selectedTrackIndex: Int,
+) {
+    val mediaItem = currentMediaItem ?: return
+    val configurations = mediaItem.localConfiguration?.subtitleConfigurations.orEmpty()
+    val updatedMediaItem = mediaItem.copy(
+        positionMs = currentPosition,
+        subtitleTrackIndex = selectedTrackIndex,
+        addedSubtitleIds = mediaItem.mediaMetadata.addedSubtitleIds - subtitleId,
+    ).buildUpon()
+        .setSubtitleConfigurations(configurations.filterNot { it.id == subtitleId })
+        .build()
+    replaceCurrentSubtitleItem(updatedMediaItem)
+}
+
+private fun Player.replaceCurrentSubtitleItem(mediaItem: MediaItem) {
     val index = currentMediaItemIndex
-    addMediaItem(index + 1, updateMediaItem)
-    seekToDefaultPosition(index + 1)
+    val position = currentPosition
+    val shouldPlayWhenReady = playWhenReady
+    addMediaItem(index + 1, mediaItem)
+    seekTo(index + 1, position)
+    playWhenReady = shouldPlayWhenReady
     removeMediaItem(index)
 }
 

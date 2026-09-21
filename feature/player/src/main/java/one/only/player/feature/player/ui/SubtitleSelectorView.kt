@@ -5,7 +5,6 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -44,6 +43,8 @@ import one.only.player.core.ui.R
 import one.only.player.core.ui.components.AppDialog
 import one.only.player.core.ui.components.ListSectionTitle
 import one.only.player.core.ui.components.SubtitleStylePanel
+import one.only.player.core.ui.designsystem.AppIcons
+import one.only.player.feature.player.extensions.addedSubtitleIds
 import one.only.player.feature.player.extensions.getName
 import one.only.player.feature.player.state.SubtitleOptionsEvent
 import one.only.player.feature.player.state.rememberSubtitleOptionsState
@@ -61,41 +62,12 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 @OptIn(UnstableApi::class)
 @Composable
-fun BoxScope.SubtitleSelectorView(
-    modifier: Modifier = Modifier,
-    shouldShow: Boolean,
-    player: Player,
-    onSelectSubtitleClick: () -> Unit,
-    onAddOnlineSubtitleClick: (String) -> Unit,
-    preferences: PlayerPreferences,
-    onPreferencesChange: (PlayerPreferences) -> Unit,
-    onEvent: (SubtitleOptionsEvent) -> Unit = {},
-    onDismiss: () -> Unit,
-) {
-    OverlayView(
-        modifier = modifier,
-        shouldShow = shouldShow,
-        title = stringResource(R.string.select_subtitle_track),
-        testTag = "panel_subtitle_selector",
-    ) {
-        SubtitleSelectorContent(
-            player = player,
-            onSelectSubtitleClick = onSelectSubtitleClick,
-            onAddOnlineSubtitleClick = onAddOnlineSubtitleClick,
-            preferences = preferences,
-            onPreferencesChange = onPreferencesChange,
-            onEvent = onEvent,
-            onDismiss = onDismiss,
-        )
-    }
-}
-
-@OptIn(UnstableApi::class)
-@Composable
 fun SubtitleSelectorContent(
     player: Player,
     onSelectSubtitleClick: () -> Unit,
     onAddOnlineSubtitleClick: (String) -> Unit,
+    onRemoveSubtitleClick: (String) -> Unit,
+    onShowSubtitleSearch: () -> Unit,
     preferences: PlayerPreferences,
     onPreferencesChange: (PlayerPreferences) -> Unit,
     onEvent: (SubtitleOptionsEvent) -> Unit = {},
@@ -114,15 +86,30 @@ fun SubtitleSelectorContent(
     ) {
         PanelOptionList(modifier = Modifier.selectableGroup()) {
             subtitleTracksState.tracks.forEachIndexed { index, track ->
-                PanelOptionRow(
-                    isSelected = track.isSelected,
-                    text = track.mediaTrackGroup.getName(C.TRACK_TYPE_TEXT, index),
-                    testTag = "item_subtitle_$index",
-                    onClick = {
-                        subtitleTracksState.switchTrack(index)
-                        onDismiss()
-                    },
-                )
+                val subtitleId = track.getTrackFormat(0).id?.substringAfter(':')
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    PanelOptionRow(
+                        modifier = Modifier.weight(1f),
+                        isSelected = track.isSelected,
+                        text = track.mediaTrackGroup.getName(C.TRACK_TYPE_TEXT, index),
+                        testTag = "item_subtitle_$index",
+                        onClick = {
+                            subtitleTracksState.switchTrack(index)
+                            onDismiss()
+                        },
+                    )
+                    if (subtitleId != null && subtitleId in player.mediaMetadata.addedSubtitleIds) {
+                        MiuixIconButton(
+                            modifier = Modifier.testTag("btn_remove_subtitle_$index"),
+                            onClick = { onRemoveSubtitleClick(subtitleId) },
+                        ) {
+                            MiuixIcon(
+                                imageVector = AppIcons.Delete,
+                                contentDescription = stringResource(R.string.remove_subtitle),
+                            )
+                        }
+                    }
+                }
             }
             PanelOptionRow(
                 isSelected = subtitleTracksState.tracks.none { it.isSelected },
@@ -150,6 +137,12 @@ fun SubtitleSelectorContent(
             onClick = {
                 isOnlineSubtitleDialogVisible = true
             },
+        )
+        Spacer(modifier = Modifier.size(12.dp))
+        PanelActionButton(
+            modifier = Modifier.testTag("btn_search_online_subtitle"),
+            text = stringResource(R.string.online_subtitle_search),
+            onClick = onShowSubtitleSearch,
         )
         Spacer(modifier = Modifier.size(16.dp))
         DelayInput(

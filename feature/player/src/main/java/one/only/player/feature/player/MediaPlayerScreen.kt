@@ -161,6 +161,9 @@ import one.only.player.feature.player.ui.LoopModeSelectorContent
 import one.only.player.feature.player.ui.MenuOverlayView
 import one.only.player.feature.player.ui.MenuRootContent
 import one.only.player.feature.player.ui.MenuRoute
+import one.only.player.feature.player.ui.OnlineSubtitleLanguageContent
+import one.only.player.feature.player.ui.OnlineSubtitleSearchContent
+import one.only.player.feature.player.ui.OnlineSubtitleSearchSettingsContent
 import one.only.player.feature.player.ui.PlaybackMarksContent
 import one.only.player.feature.player.ui.PlaybackSpeedSelectorContent
 import one.only.player.feature.player.ui.PlaylistContent
@@ -228,6 +231,7 @@ internal fun MediaPlayerScreen(
     modifier: Modifier = Modifier,
     onSelectSubtitleClick: () -> Unit,
     onAddOnlineSubtitleClick: (String) -> Unit,
+    onRemoveSubtitleClick: (String) -> Unit,
     onBackClick: () -> Unit,
     onPlayInBackgroundClick: () -> Unit,
     isTakingScreenshot: Boolean = false,
@@ -241,6 +245,7 @@ internal fun MediaPlayerScreen(
     )
     player ?: return
     val playbackMarks by viewModel.playbackMarks.collectAsStateWithLifecycle()
+    val onlineSubtitleSearch by viewModel.onlineSubtitleSearch.collectAsStateWithLifecycle()
     val metadataState = rememberMetadataState(player)
     val chaptersState = rememberChaptersState(player)
     val mediaPresentationState = rememberMediaPresentationState(player)
@@ -303,18 +308,24 @@ internal fun MediaPlayerScreen(
 
     DisposableEffect(player) {
         viewModel.updatePlaybackMarkMediaItem(player.currentMediaItem)
+        viewModel.updateOnlineSubtitleMediaItem(player.currentMediaItem, player.mediaMetadata.title?.toString())
         val listener = object : Player.Listener {
             override fun onMediaItemTransition(
                 mediaItem: androidx.media3.common.MediaItem?,
                 reason: Int,
             ) {
                 viewModel.updatePlaybackMarkMediaItem(mediaItem)
+                viewModel.updateOnlineSubtitleMediaItem(mediaItem, player.mediaMetadata.title?.toString())
             }
         }
         player.addListener(listener)
         onDispose {
             player.removeListener(listener)
         }
+    }
+
+    LaunchedEffect(metadataState.title) {
+        viewModel.updateOnlineSubtitleMediaItem(player.currentMediaItem, metadataState.title)
     }
 
     LaunchedEffect(pictureInPictureState.isInPictureInPictureMode) {
@@ -1090,6 +1101,20 @@ internal fun MediaPlayerScreen(
                 },
                 onDismiss = ::dismissOverlay,
                 trailingActions = when (currentRoute) {
+                    MenuRoute.SubtitleSearch -> {
+                        {
+                            MiuixIconButton(
+                                modifier = Modifier.testTag("btn_online_subtitle_settings"),
+                                onClick = { navigateToMenuRoute(MenuRoute.SubtitleSearchSettings) },
+                            ) {
+                                MiuixIcon(
+                                    imageVector = AppIcons.Settings,
+                                    contentDescription = stringResource(coreUiR.string.online_subtitle_search_settings),
+                                    tint = menuPanelTokens.contentColor,
+                                )
+                            }
+                        }
+                    }
                     MenuRoute.VideoFilters -> {
                         {
                             MiuixIconButton(
@@ -1167,10 +1192,33 @@ internal fun MediaPlayerScreen(
                         player = player,
                         onSelectSubtitleClick = onSelectSubtitleClick,
                         onAddOnlineSubtitleClick = onAddOnlineSubtitleClick,
+                        onRemoveSubtitleClick = onRemoveSubtitleClick,
+                        onShowSubtitleSearch = { navigateToMenuRoute(MenuRoute.SubtitleSearch) },
                         preferences = activePlayerPreferences,
                         onPreferencesChange = ::updateSubtitleStyle,
                         onEvent = viewModel::onSubtitleOptionEvent,
                         onDismiss = ::dismissOverlay,
+                    )
+
+                    MenuRoute.SubtitleSearch -> OnlineSubtitleSearchContent(
+                        state = onlineSubtitleSearch,
+                        onQueryChange = viewModel::onOnlineSubtitleQueryChange,
+                        onSearch = viewModel::onSearchOnlineSubtitles,
+                        onSelectResult = viewModel::onDownloadOnlineSubtitle,
+                    )
+
+                    MenuRoute.SubtitleSearchLanguage -> OnlineSubtitleLanguageContent(
+                        selected = onlineSubtitleSearch.preferences.languageFilter,
+                        onSelect = {
+                            viewModel.onOnlineSubtitleLanguageFilterChange(it)
+                            popMenuRoute()
+                        },
+                    )
+
+                    MenuRoute.SubtitleSearchSettings -> OnlineSubtitleSearchSettingsContent(
+                        preferences = onlineSubtitleSearch.preferences,
+                        onShowLanguageFilter = { navigateToMenuRoute(MenuRoute.SubtitleSearchLanguage) },
+                        onProviderToggle = viewModel::onOnlineSubtitleProviderToggle,
                     )
 
                     MenuRoute.PlaybackSpeed -> PlaybackSpeedSelectorContent(player = player)
@@ -1410,6 +1458,9 @@ private fun titleForMenuRoute(
     MenuRoute.MirrorVideo -> stringResource(coreUiR.string.mirror_video)
     MenuRoute.Audio -> stringResource(coreUiR.string.select_audio_track)
     MenuRoute.Subtitle -> stringResource(coreUiR.string.select_subtitle_track)
+    MenuRoute.SubtitleSearch -> stringResource(coreUiR.string.online_subtitle_search)
+    MenuRoute.SubtitleSearchSettings -> stringResource(coreUiR.string.online_subtitle_search_settings)
+    MenuRoute.SubtitleSearchLanguage -> stringResource(coreUiR.string.online_subtitle_search_language)
     MenuRoute.PlaybackSpeed -> stringResource(coreUiR.string.select_playback_speed)
     MenuRoute.VideoContentScale -> stringResource(coreUiR.string.video_zoom)
     MenuRoute.VideoInfo -> stringResource(coreUiR.string.video_info)
