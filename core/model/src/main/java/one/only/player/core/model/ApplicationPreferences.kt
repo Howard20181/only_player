@@ -43,7 +43,10 @@ data class ApplicationPreferences(
     // 缩略图生成
     val thumbnailGenerationStrategy: ThumbnailGenerationStrategy = ThumbnailGenerationStrategy.FRAME_AT_PERCENTAGE,
     val thumbnailFramePosition: Float = DEFAULT_THUMBNAIL_FRAME_POSITION,
+
+    // 应用更新
     val shouldCheckForUpdatesOnStartup: Boolean = false,
+    val updateChannel: UpdateChannel = UpdateChannel.STABLE,
     val manualVideoPaths: List<StoragePath> = emptyList(),
     val pendingExternalVideoPaths: List<StoragePath> = emptyList(),
 ) {

@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -40,6 +41,7 @@ import androidx.core.content.pm.PackageInfoCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import one.only.player.core.common.extensions.appIcon
+import one.only.player.core.model.UpdateChannel
 import one.only.player.core.ui.R
 import one.only.player.core.ui.components.AppScaffold
 import one.only.player.core.ui.components.ClickablePreferenceItem
@@ -47,10 +49,13 @@ import one.only.player.core.ui.components.LocalTopBarBackdrop
 import one.only.player.core.ui.components.PreferenceGroup
 import one.only.player.core.ui.components.PreferenceItem
 import one.only.player.core.ui.components.PreferenceSwitch
+import one.only.player.core.ui.components.RadioTextButton
 import one.only.player.core.ui.components.SettingsGroupGap
 import one.only.player.core.ui.components.surfaceBlur
 import one.only.player.core.ui.designsystem.AppIcons
 import one.only.player.core.ui.extensions.withBottomFallback
+import one.only.player.settings.composables.OptionsDialog
+import one.only.player.settings.extensions.name
 import one.only.player.settings.screens.about.effect.FlowLightBackground
 import top.yukonga.miuix.kmp.basic.Icon as MiuixIcon
 import top.yukonga.miuix.kmp.basic.IconButton as MiuixIconButton
@@ -147,7 +152,18 @@ private fun UpdateSection(
     val context = LocalContext.current
     val uriHandler = LocalUriHandler.current
 
+    val updateChannels = remember { UpdateChannel.entries }
+
     PreferenceGroup {
+        ClickablePreferenceItem(
+            modifier = Modifier.testTag("item_settings_about_update_channel"),
+            title = stringResource(R.string.update_channel),
+            description = uiState.updateChannel.name(),
+            icon = AppIcons.ExtraSettings,
+            onClick = {
+                onEvent(AboutPreferencesUiEvent.ShowDialog(AboutPreferenceDialog.UpdateChannel))
+            },
+        )
         ClickablePreferenceItem(
             modifier = Modifier.testTag("item_settings_about_check_updates"),
             title = stringResource(R.string.check_for_updates),
@@ -159,7 +175,10 @@ private fun UpdateSection(
                         uriHandler.openUriOrShowToast(state.releaseUrl, context)
                     }
                     UpdateState.Checking -> {}
-                    else -> onEvent(AboutPreferencesUiEvent.CheckForUpdates(currentVersionName))
+                    UpdateState.Idle,
+                    UpdateState.UpToDate,
+                    UpdateState.Error,
+                    -> onEvent(AboutPreferencesUiEvent.CheckForUpdates(currentVersionName))
                 }
             },
         )
@@ -170,6 +189,30 @@ private fun UpdateSection(
             isChecked = uiState.shouldCheckForUpdatesOnStartup,
             onClick = { onEvent(AboutPreferencesUiEvent.ToggleCheckOnStartup) },
         )
+    }
+
+    uiState.showDialog?.let { dialog ->
+        when (dialog) {
+            AboutPreferenceDialog.UpdateChannel -> {
+                OptionsDialog(
+                    text = stringResource(R.string.update_channel),
+                    onDismissClick = { onEvent(AboutPreferencesUiEvent.ShowDialog(null)) },
+                ) {
+                    items(updateChannels) { channel ->
+                        RadioTextButton(
+                            modifier = Modifier.testTag(
+                                "option_settings_about_update_channel_${channel.name.lowercase()}",
+                            ),
+                            text = channel.name(),
+                            isSelected = channel == uiState.updateChannel,
+                            onClick = {
+                                onEvent(AboutPreferencesUiEvent.SetUpdateChannel(channel))
+                            },
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 

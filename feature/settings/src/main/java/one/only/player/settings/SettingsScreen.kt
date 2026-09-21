@@ -392,6 +392,7 @@ internal enum class SettingRow(
             R.string.android_version,
             R.string.app_logs,
             R.string.libraries,
+            R.string.update_channel,
             R.string.check_for_updates,
             R.string.check_updates_on_startup,
         ),
