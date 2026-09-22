@@ -506,28 +506,26 @@ class PlayerViewModel @Inject constructor(
     }
 
     fun onSearchOnlineSubtitles() {
-        val mediaId = subtitleMediaId ?: return
+        if (subtitleMediaId == null) return
         val state = internalOnlineSubtitleSearch.value
         if (state.isSearching || state.query.isBlank()) return
 
         internalOnlineSubtitleSearch.update { it.copy(outcome = DataState.Loading) }
         subtitleSearchJob = viewModelScope.launch {
-            val outcome = try {
-                DataState.Success(
-                    searchOnlineSubtitlesUseCase(
-                        query = state.query,
-                        languageFilter = state.preferences.languageFilter,
-                        providers = state.preferences.providers,
-                    ),
-                )
+            try {
+                searchOnlineSubtitlesUseCase(
+                    query = state.query,
+                    languageFilter = state.preferences.languageFilter,
+                    providers = state.preferences.providers,
+                ).collect { result ->
+                    internalOnlineSubtitleSearch.update { it.copy(outcome = DataState.Success(result)) }
+                }
             } catch (exception: CancellationException) {
                 throw exception
             } catch (exception: Exception) {
                 Logger.error(TAG, "Online subtitle search failed", exception)
-                internalOnlineSubtitleEvents.send(OnlineSubtitleEvent.SearchFailed(mediaId))
-                DataState.Error(exception)
+                internalOnlineSubtitleSearch.update { it.copy(outcome = DataState.Error(exception)) }
             }
-            internalOnlineSubtitleSearch.update { it.copy(outcome = outcome) }
         }
     }
 
@@ -538,7 +536,7 @@ class PlayerViewModel @Inject constructor(
         subtitleDownloadJob = viewModelScope.launch {
             try {
                 val payload = downloadOnlineSubtitleUseCase(result)
-                val subtitle = onlineSubtitleRepository.importSubtitle(payload.bytes, payload.extension)
+                val subtitle = onlineSubtitleRepository.importSubtitle(payload.bytes, payload.extension, result)
                 internalOnlineSubtitleEvents.send(OnlineSubtitleEvent.Saved(subtitle.uri, mediaId))
             } catch (exception: CancellationException) {
                 throw exception

@@ -3,9 +3,9 @@ package one.only.player.core.data.repository
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withTimeoutOrNull
 import one.only.player.core.common.Logger
 import one.only.player.core.data.remote.subtitle.OpenSubtitlesRestClient
@@ -15,7 +15,9 @@ import one.only.player.core.data.remote.subtitle.SubtitleSearchFailedException
 import one.only.player.core.model.OnlineSubtitleLanguageFilter
 import one.only.player.core.model.OnlineSubtitlePayload
 import one.only.player.core.model.OnlineSubtitleProvider
+import one.only.player.core.model.OnlineSubtitleProviderStatus
 import one.only.player.core.model.OnlineSubtitleResult
+import one.only.player.core.model.OnlineSubtitleSearchResult
 
 @Singleton
 class RemoteSubtitleSearchRepository @Inject constructor(
@@ -24,31 +26,26 @@ class RemoteSubtitleSearchRepository @Inject constructor(
     private val subtitleCatClient: SubtitleCatClient,
 ) : SubtitleSearchRepository {
 
-    // 单个来源挂掉不该拖垮整次搜索，全部失败才向上抛
-    override suspend fun search(
+    // 每个来源独立更新，失败状态与已返回的字幕一起保留。
+    override fun search(
         query: String,
         languageFilter: OnlineSubtitleLanguageFilter,
         providers: Set<OnlineSubtitleProvider>,
-    ): List<OnlineSubtitleResult> = coroutineScope {
-        val outcomes = providers
-            .map { provider -> async { searchProvider(provider, query, languageFilter.languageCode) } }
-            .awaitAll()
-
-        val results = outcomes.flatMap { outcome ->
-            when (outcome) {
-                is ProviderOutcome.Success -> outcome.results
-                is ProviderOutcome.Failure -> emptyList()
+    ): Flow<OnlineSubtitleSearchResult> = combine(
+        providers.map { provider ->
+            flow {
+                emit(ProviderOutcome(provider, OnlineSubtitleProviderStatus.SEARCHING))
+                emit(searchProvider(provider, query, languageFilter.languageCode))
             }
-        }
-        if (results.isEmpty() && outcomes.all { it is ProviderOutcome.Failure }) {
-            val cause = (outcomes.first() as ProviderOutcome.Failure).cause
-            throw SubtitleSearchFailedException("All subtitle providers failed", cause)
-        }
-
-        results
-            .distinctBy { result -> result.key }
-            .sortedByDescending { result -> result.downloadCount ?: 0 }
-            .take(MAX_RESULTS)
+        },
+    ) { outcomes ->
+        OnlineSubtitleSearchResult(
+            results = outcomes.flatMap { it.results }
+                .distinctBy { result -> result.key }
+                .sortedByDescending { result -> result.downloadCount ?: 0 }
+                .take(MAX_RESULTS),
+            providerStates = outcomes.associate { it.provider to it.status },
+        )
     }
 
     override suspend fun fetchSubtitle(result: OnlineSubtitleResult): OnlineSubtitlePayload = when (result.provider) {
@@ -83,18 +80,19 @@ class RemoteSubtitleSearchRepository @Inject constructor(
         } ?: throw SubtitleSearchFailedException("Subtitle provider timed out: $provider")
 
         Logger.debug(TAG, "Subtitle search ok: provider=$provider, results=${results.size}")
-        ProviderOutcome.Success(results)
+        ProviderOutcome(provider, OnlineSubtitleProviderStatus.SUCCEEDED, results)
     } catch (exception: CancellationException) {
         throw exception
     } catch (exception: Exception) {
         Logger.error(TAG, "Subtitle search failed: provider=$provider", exception)
-        ProviderOutcome.Failure(exception)
+        ProviderOutcome(provider, OnlineSubtitleProviderStatus.FAILED)
     }
 
-    private sealed interface ProviderOutcome {
-        data class Success(val results: List<OnlineSubtitleResult>) : ProviderOutcome
-        data class Failure(val cause: Throwable) : ProviderOutcome
-    }
+    private data class ProviderOutcome(
+        val provider: OnlineSubtitleProvider,
+        val status: OnlineSubtitleProviderStatus,
+        val results: List<OnlineSubtitleResult> = emptyList(),
+    )
 
     private companion object {
         const val TAG = "RemoteSubtitleSearchRepository"

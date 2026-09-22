@@ -10,6 +10,20 @@ enum class OnlineSubtitleProvider {
     SUBTITLE_CAT,
 }
 
+enum class OnlineSubtitleProviderStatus {
+    SEARCHING,
+    SUCCEEDED,
+    FAILED,
+}
+
+data class OnlineSubtitleSearchResult(
+    val results: List<OnlineSubtitleResult> = emptyList(),
+    val providerStates: Map<OnlineSubtitleProvider, OnlineSubtitleProviderStatus> = emptyMap(),
+) {
+    val isSearching: Boolean get() = OnlineSubtitleProviderStatus.SEARCHING in providerStates.values
+    val hasFailures: Boolean get() = OnlineSubtitleProviderStatus.FAILED in providerStates.values
+}
+
 // providerId 由提供方解释（直链或字幕编号），不要跨来源复用
 data class OnlineSubtitleResult(
     val provider: OnlineSubtitleProvider,

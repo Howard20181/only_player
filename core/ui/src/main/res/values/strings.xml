@@ -327,6 +327,10 @@
     <string name="online_subtitle_searching">Searching…</string>
     <string name="online_subtitle_search_empty">No subtitles found</string>
     <string name="online_subtitle_search_failed">Search failed, please try again later</string>
+    <string name="online_subtitle_search_partial">Some sources could not be searched. Results may be incomplete.</string>
+    <string name="online_subtitle_source_finished">Finished</string>
+    <string name="online_subtitle_source_failed">Search failed</string>
+    <string name="online_subtitle_source_status">%1$s: %2$s</string>
     <string name="online_subtitle_vip_required">This subtitle needs an OpenSubtitles VIP download, try another one</string>
     <string name="online_subtitle_search_language">Language</string>
     <string name="online_subtitle_search_source">Source</string>

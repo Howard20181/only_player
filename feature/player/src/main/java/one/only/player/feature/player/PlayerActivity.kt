@@ -308,7 +308,6 @@ open class PlayerActivity : AppCompatActivity() {
                     val messageResId = when (event) {
                         is OnlineSubtitleEvent.Saved -> attachOnlineSubtitle(event.uri, event.mediaId)
                         is OnlineSubtitleEvent.Failed -> event.cause.toOnlineSubtitleMessageResId()
-                        is OnlineSubtitleEvent.SearchFailed -> one.only.player.core.ui.R.string.online_subtitle_search_failed
                     }
                     showToast(messageResId)
                 }
@@ -395,7 +394,7 @@ open class PlayerActivity : AppCompatActivity() {
     override fun onStart() {
         super.onStart()
         lifecycleScope.launch(Dispatchers.IO) {
-            onlineSubtitleRepository.deleteExpiredSubtitles()
+            onlineSubtitleRepository.migrateCachedSubtitles()
         }
         lifecycleScope.launch {
             if (!ensureMediaPermission()) return@launch

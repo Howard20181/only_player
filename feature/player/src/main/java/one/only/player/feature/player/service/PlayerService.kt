@@ -131,7 +131,6 @@ import one.only.player.feature.player.extensions.subtitleDelayMilliseconds
 import one.only.player.feature.player.extensions.subtitleSpeed
 import one.only.player.feature.player.extensions.subtitleTrackIndex
 import one.only.player.feature.player.extensions.switchTrack
-import one.only.player.feature.player.extensions.uriToSubtitleConfiguration
 import one.only.player.feature.player.extensions.videoZoom
 import one.only.player.feature.player.model.extractVideoChapters
 import one.only.player.feature.player.model.toBundle
@@ -256,6 +255,7 @@ class PlayerService : MediaSessionService() {
             webDavClient = webDavClient,
             smbClient = smbClient,
             ftpClient = ftpClient,
+            onlineSubtitleRepository = onlineSubtitleRepository,
         )
     }
     private val mediaParserRetried = mutableSetOf<String>()
@@ -1405,7 +1405,7 @@ class PlayerService : MediaSessionService() {
                         Logger.info(TAG, "Add subtitle track rejected: empty uri")
                         return@future SessionResult(SessionError.ERROR_BAD_VALUE)
                     }
-                    val subtitleUri = subtitleUriString.toUri()
+                    val subtitleUri = onlineSubtitleRepository.resolveSubtitle(subtitleUriString.toUri())
                     val player = mediaSession?.player
                     if (player == null) {
                         Logger.info(TAG, "Add subtitle track rejected: player unavailable")
@@ -1421,7 +1421,7 @@ class PlayerService : MediaSessionService() {
                         return@future SessionResult(SessionError.ERROR_BAD_VALUE)
                     }
 
-                    val newSubConfiguration = uriToSubtitleConfiguration(
+                    val newSubConfiguration = externalSubtitleLoader.buildConfiguration(
                         uri = subtitleUri,
                         subtitleEncoding = playerPreferences.subtitleTextEncoding,
                     )
@@ -1437,7 +1437,7 @@ class PlayerService : MediaSessionService() {
                     if (mediaSession?.player !== player || player.currentMediaItem?.mediaId != currentMediaItem.mediaId) {
                         return@future SessionResult(SessionError.ERROR_BAD_VALUE)
                     }
-                    pendingExternalSubtitleSelection = ExternalSubtitleSelection(currentMediaItem.mediaId, subtitleUriString)
+                    pendingExternalSubtitleSelection = ExternalSubtitleSelection(currentMediaItem.mediaId, newSubConfiguration.id)
                     player.addAdditionalSubtitleConfiguration(newSubConfiguration)
                     selectExternalSubtitleIfAvailable(player.currentTracks)
                     Logger.info(TAG, "Added subtitle track: subtitle=${subtitleUri.toLogSummary()} media=${playbackStateUri.toLogSummary()}")
@@ -1933,7 +1933,7 @@ class PlayerService : MediaSessionService() {
                 )
 
                 val externalSubs = videoState?.externalSubs ?: emptyList()
-                val validExternalSubs = externalSubs.filter { subUri ->
+                val validExternalSubs = externalSubs.map { onlineSubtitleRepository.resolveSubtitle(it) }.filter { subUri ->
                     if (externalSubtitleLoader.isDirectSubtitleUri(subUri)) return@filter true
                     try {
                         contentResolver.openInputStream(subUri)?.close()
@@ -1943,13 +1943,12 @@ class PlayerService : MediaSessionService() {
                         false
                     }
                 }
-                if (validExternalSubs.size != externalSubs.size) {
+                if (validExternalSubs != externalSubs) {
                     mediaRepository.updateExternalSubs(
                         uri = playbackStateUri,
                         externalSubs = validExternalSubs,
                     )
                 }
-                validExternalSubs.forEach(onlineSubtitleRepository::touchSubtitle)
                 val existingSubConfigurations = mediaItem.localConfiguration?.subtitleConfigurations ?: emptyList()
                 val restoredSubConfigurations = validExternalSubs.map { subtitleUri ->
                     externalSubtitleLoader.buildConfiguration(

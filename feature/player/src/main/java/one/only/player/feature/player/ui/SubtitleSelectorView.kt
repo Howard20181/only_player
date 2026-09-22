@@ -44,7 +44,6 @@ import one.only.player.core.ui.components.AppDialog
 import one.only.player.core.ui.components.ListSectionTitle
 import one.only.player.core.ui.components.SubtitleStylePanel
 import one.only.player.core.ui.designsystem.AppIcons
-import one.only.player.feature.player.extensions.addedSubtitleIds
 import one.only.player.feature.player.extensions.getName
 import one.only.player.feature.player.state.SubtitleOptionsEvent
 import one.only.player.feature.player.state.rememberSubtitleOptionsState
@@ -92,13 +91,14 @@ fun SubtitleSelectorContent(
                         modifier = Modifier.weight(1f),
                         isSelected = track.isSelected,
                         text = track.mediaTrackGroup.getName(C.TRACK_TYPE_TEXT, index),
+                        maxTextLines = Int.MAX_VALUE,
                         testTag = "item_subtitle_$index",
                         onClick = {
                             subtitleTracksState.switchTrack(index)
                             onDismiss()
                         },
                     )
-                    if (subtitleId != null && subtitleId in player.mediaMetadata.addedSubtitleIds) {
+                    if (subtitleId != null && subtitleId in subtitleTracksState.addedSubtitleIds) {
                         MiuixIconButton(
                             modifier = Modifier.testTag("btn_remove_subtitle_$index"),
                             onClick = { onRemoveSubtitleClick(subtitleId) },

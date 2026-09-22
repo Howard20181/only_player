@@ -54,6 +54,7 @@ fun PanelOptionRow(
     testTag: String? = null,
     isEnabled: Boolean = true,
     description: String? = null,
+    maxTextLines: Int = if (description == null) 2 else 1,
 ) {
     val tokens = rememberPlayerPanelTokens()
     val shape = tokens.optionShape
@@ -91,7 +92,7 @@ fun PanelOptionRow(
                 text = text,
                 color = contentColor,
                 style = MiuixTheme.textStyles.body1,
-                maxLines = if (description == null) 2 else 1,
+                maxLines = maxTextLines,
                 overflow = TextOverflow.Ellipsis,
             )
             if (description != null) {

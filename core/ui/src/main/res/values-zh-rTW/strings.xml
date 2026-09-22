@@ -317,7 +317,11 @@
     <string name="online_subtitle_search_action">搜尋</string>
     <string name="online_subtitle_searching">搜尋中…</string>
     <string name="online_subtitle_search_empty">沒有找到字幕</string>
-    <string name="online_subtitle_search_failed">搜尋失敗，請稍後再試</string>
+    <string name="online_subtitle_search_failed">搜尋失敗，請檢查網路或稍後重試</string>
+    <string name="online_subtitle_search_partial">部分來源搜尋失敗，結果可能不完整</string>
+    <string name="online_subtitle_source_finished">已完成</string>
+    <string name="online_subtitle_source_failed">搜尋失敗</string>
+    <string name="online_subtitle_source_status">%1$s：%2$s</string>
     <string name="online_subtitle_vip_required">該字幕需要 OpenSubtitles VIP 才能下載，換一條試試</string>
     <string name="online_subtitle_search_language">語言</string>
     <string name="online_subtitle_search_source">來源</string>

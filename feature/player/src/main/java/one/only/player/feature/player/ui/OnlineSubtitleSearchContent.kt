@@ -19,6 +19,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import one.only.player.core.model.OnlineSubtitleLanguageFilter
 import one.only.player.core.model.OnlineSubtitleProvider
+import one.only.player.core.model.OnlineSubtitleProviderStatus
 import one.only.player.core.model.OnlineSubtitleResult
 import one.only.player.core.model.OnlineSubtitleSearchPreferences
 import one.only.player.core.ui.R
@@ -42,7 +43,6 @@ internal fun OnlineSubtitleSearchContent(
     onSearch: () -> Unit,
     onSelectResult: (OnlineSubtitleResult) -> Unit,
 ) {
-    val tokens = rememberPlayerPanelTokens()
     val scrollState = rememberScrollState()
     PanelOptionList(
         modifier = Modifier
@@ -68,37 +68,7 @@ internal fun OnlineSubtitleSearchContent(
             isEnabled = state.query.isNotBlank() && !state.isSearching,
             onClick = onSearch,
         )
-        when (val outcome = state.outcome) {
-            null -> Unit
-
-            DataState.Loading -> Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .testTag("status_online_subtitle_searching"),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
-                MiuixText(
-                    text = stringResource(R.string.online_subtitle_searching),
-                    color = tokens.contentColor,
-                    style = MiuixTheme.textStyles.body2,
-                )
-            }
-
-            is DataState.Error -> Unit
-
-            is DataState.Success -> if (outcome.value.isEmpty()) {
-                MiuixText(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .testTag("status_online_subtitle_search_empty"),
-                    text = stringResource(R.string.online_subtitle_search_empty),
-                    color = tokens.secondaryContentColor,
-                    style = MiuixTheme.textStyles.body2,
-                )
-            }
-        }
+        OnlineSubtitleSearchStatus(state = state, onRetry = onSearch)
         state.results.forEach { result ->
             PanelOptionRow(
                 isSelected = false,
@@ -113,6 +83,68 @@ internal fun OnlineSubtitleSearchContent(
                 onClick = { onSelectResult(result) },
             )
         }
+    }
+}
+
+@Composable
+private fun OnlineSubtitleSearchStatus(
+    state: OnlineSubtitleSearchUiState,
+    onRetry: () -> Unit,
+) {
+    val tokens = rememberPlayerPanelTokens()
+    val result = state.outcome?.result
+    if (state.isSearching) {
+        Row(
+            modifier = Modifier.testTag("status_online_subtitle_searching"),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+            MiuixText(
+                text = stringResource(R.string.online_subtitle_searching),
+                color = tokens.contentColor,
+                style = MiuixTheme.textStyles.body2,
+            )
+        }
+    }
+    result?.providerStates?.forEach { (provider, status) ->
+        val statusText = stringResource(
+            when (status) {
+                OnlineSubtitleProviderStatus.SEARCHING -> R.string.online_subtitle_searching
+                OnlineSubtitleProviderStatus.SUCCEEDED -> R.string.online_subtitle_source_finished
+                OnlineSubtitleProviderStatus.FAILED -> R.string.online_subtitle_source_failed
+            },
+        )
+        MiuixText(
+            modifier = Modifier.testTag("status_online_subtitle_source_${provider.name.lowercase()}"),
+            text = stringResource(R.string.online_subtitle_source_status, provider.label(), statusText),
+            color = tokens.secondaryContentColor,
+            style = MiuixTheme.textStyles.body2,
+        )
+    }
+    if (state.outcome is DataState.Error || result?.hasFailures == true) {
+        val hasSuccessfulSource = result?.providerStates?.containsValue(OnlineSubtitleProviderStatus.SUCCEEDED) == true
+        MiuixText(
+            modifier = Modifier.testTag("status_online_subtitle_search_error"),
+            text = stringResource(
+                if (hasSuccessfulSource) R.string.online_subtitle_search_partial else R.string.online_subtitle_search_failed,
+            ),
+            color = tokens.contentColor,
+            style = MiuixTheme.textStyles.body2,
+        )
+        PanelActionButton(
+            modifier = Modifier.testTag("btn_online_subtitle_retry"),
+            text = stringResource(R.string.retry),
+            isEnabled = !state.isSearching,
+            onClick = onRetry,
+        )
+    } else if (result != null && !result.isSearching && result.results.isEmpty()) {
+        MiuixText(
+            modifier = Modifier.testTag("status_online_subtitle_search_empty"),
+            text = stringResource(R.string.online_subtitle_search_empty),
+            color = tokens.secondaryContentColor,
+            style = MiuixTheme.textStyles.body2,
+        )
     }
 }
 
@@ -171,7 +203,8 @@ internal fun OnlineSubtitleLanguageContent(
 @Composable
 private fun OnlineSubtitleResult.describe(): String {
     val parts = buildList {
-        add(if (languageCode.isEmpty()) stringResource(R.string.unknown) else languageName.ifEmpty { languageCode })
+        val language = OnlineSubtitleLanguageFilter.entries.firstOrNull { it.languageCode == languageCode }
+        add(language?.label() ?: languageName.ifEmpty { languageCode.ifEmpty { stringResource(R.string.unknown) } })
         if (format.isNotEmpty()) add(format.uppercase())
         add(provider.label())
         downloadCount?.let { count -> add(stringResource(R.string.online_subtitle_downloads, count)) }
