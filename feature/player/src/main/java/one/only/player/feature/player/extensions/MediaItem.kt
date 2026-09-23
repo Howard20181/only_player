@@ -271,9 +271,23 @@ fun MediaItem?.toSearchQuery(title: String?): String {
     }
     if (candidate.isEmpty()) return ""
 
-    val extension = candidate.substringAfterLast('.', missingDelimiterValue = "").lowercase()
-    val name = if (extension in VIDEO_EXTENSIONS) candidate.substringBeforeLast('.') else candidate
-    return name.toSearchableTitle()
+    return candidate.dropVideoExtension().toSearchableTitle()
+}
+
+// 未清理的片源名，保留年份、季集和发布标签供结果排序比对
+fun MediaItem?.toReleaseName(title: String?): String {
+    if (this == null) return ""
+
+    val uri = localConfiguration?.uri
+    val candidate = title?.trim().orEmpty().ifBlank {
+        uri?.takeIf { it.scheme != "content" }?.lastPathSegment?.trim().orEmpty()
+    }
+    return candidate.dropVideoExtension()
+}
+
+private fun String.dropVideoExtension(): String {
+    val extension = substringAfterLast('.', missingDelimiterValue = "").lowercase()
+    return if (extension in VIDEO_EXTENSIONS) substringBeforeLast('.') else this
 }
 
 // 字幕接口按全词匹配，1080p/x265/WEB-DL 这类发布标签只会把命中面缩到零，从第一个标签起截断

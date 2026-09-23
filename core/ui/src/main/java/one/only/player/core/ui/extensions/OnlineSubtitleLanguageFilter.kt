@@ -8,6 +8,7 @@ import one.only.player.core.ui.R
 @Composable
 fun OnlineSubtitleLanguageFilter.label(): String = stringResource(
     when (this) {
+        OnlineSubtitleLanguageFilter.AUTO -> R.string.online_subtitle_language_auto
         OnlineSubtitleLanguageFilter.ALL -> R.string.online_subtitle_language_all
         OnlineSubtitleLanguageFilter.CHINESE_SIMPLIFIED -> R.string.online_subtitle_language_chinese_simplified
         OnlineSubtitleLanguageFilter.CHINESE_TRADITIONAL -> R.string.online_subtitle_language_chinese_traditional

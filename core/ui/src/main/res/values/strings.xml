@@ -319,6 +319,7 @@
     <string name="online_subtitle_result_in_use">In use</string>
     <string name="online_subtitle_cancel_download">Cancel download</string>
     <string name="online_subtitle_back_to_tracks">Go to subtitle list</string>
+    <string name="online_subtitle_details">Subtitle details</string>
     <string name="online_subtitle_search_settings">Subtitle search settings</string>
     <string name="online_subtitle_default_language">Default search language</string>
     <string name="online_subtitle_default_sources">Subtitle sources</string>
@@ -338,6 +339,7 @@
     <string name="online_subtitle_vip_required">This subtitle needs an OpenSubtitles VIP download, try another one</string>
     <string name="online_subtitle_search_language">Language</string>
     <string name="online_subtitle_search_source">Source</string>
+    <string name="online_subtitle_language_auto">Follow preferred subtitle language</string>
     <string name="online_subtitle_language_all">All</string>
     <string name="online_subtitle_language_chinese_simplified">Simplified Chinese</string>
     <string name="online_subtitle_language_chinese_traditional">Traditional Chinese</string>

@@ -41,6 +41,7 @@ import one.only.player.core.model.DecoderPriority
 import one.only.player.core.model.LastPlayerScreenOrientation
 import one.only.player.core.model.LoopMode
 import one.only.player.core.model.OnlineSubtitleLanguageFilter
+import one.only.player.core.model.OnlineSubtitleMatchHint
 import one.only.player.core.model.OnlineSubtitleProvider
 import one.only.player.core.model.OnlineSubtitleResult
 import one.only.player.core.model.PlaybackMark
@@ -64,6 +65,7 @@ import one.only.player.core.ui.base.DataState
 import one.only.player.feature.player.extensions.remoteFilePath
 import one.only.player.feature.player.extensions.remoteProtocol
 import one.only.player.feature.player.extensions.remoteServerId
+import one.only.player.feature.player.extensions.toReleaseName
 import one.only.player.feature.player.extensions.toSearchQuery
 import one.only.player.feature.player.state.OnlineSubtitleEvent
 import one.only.player.feature.player.state.OnlineSubtitleSearchUiState
@@ -129,6 +131,7 @@ class PlayerViewModel @Inject constructor(
     private var subtitleDownloadJob: Job? = null
     private var subtitleTrackSyncJob: Job? = null
     private var subtitleMediaId: String? = null
+    private var subtitleReleaseName: String = ""
     private var hasEditedSubtitleQuery = false
     private val playbackMarkMediaUri = MutableStateFlow<String?>(null)
 
@@ -466,6 +469,7 @@ class PlayerViewModel @Inject constructor(
     ) {
         val mediaId = mediaItem?.mediaId
         val query = mediaItem.toSearchQuery(title)
+        subtitleReleaseName = mediaItem.toReleaseName(title)
         if (subtitleMediaId == mediaId) {
             if (hasEditedSubtitleQuery || query == internalOnlineSubtitleSearch.value.query) return
             subtitleSearchJob?.cancel()
@@ -534,13 +538,18 @@ class PlayerViewModel @Inject constructor(
         val state = internalOnlineSubtitleSearch.value
         if (state.isSearching || state.query.isBlank()) return
 
+        val preferredSubtitleLanguage = preferencesRepository.playerPreferences.value.preferredSubtitleLanguage
         internalOnlineSubtitleSearch.update { it.copy(outcome = DataState.Loading) }
         subtitleSearchJob = viewModelScope.launch {
             try {
                 searchOnlineSubtitlesUseCase(
                     query = state.query,
-                    languageFilter = state.preferences.languageFilter,
+                    languageCode = state.preferences.resolveLanguageCode(preferredSubtitleLanguage),
                     providers = state.preferences.providers,
+                    matchHint = OnlineSubtitleMatchHint.from(
+                        releaseName = subtitleReleaseName.ifEmpty { state.query },
+                        preferredSubtitleLanguage = preferredSubtitleLanguage,
+                    ),
                 ).collect { result ->
                     internalOnlineSubtitleSearch.update { it.copy(outcome = DataState.Success(result)) }
                 }

@@ -126,8 +126,10 @@ object OnlineSubtitleLanguage {
 }
 
 // 界面可筛选的语言；provider 各自的语言码写法在数据层映射
+// AUTO 不是具体语言，取值时解析为首选字幕语言
 @Serializable
 enum class OnlineSubtitleLanguageFilter(val languageCode: String?) {
+    AUTO(null),
     ALL(null),
     CHINESE_SIMPLIFIED(OnlineSubtitleLanguage.SIMPLIFIED_CHINESE),
     CHINESE_TRADITIONAL(OnlineSubtitleLanguage.TRADITIONAL_CHINESE),
@@ -152,7 +154,7 @@ enum class OnlineSubtitleLanguageFilter(val languageCode: String?) {
 
 @Serializable
 data class OnlineSubtitleSearchPreferences(
-    val languageFilter: OnlineSubtitleLanguageFilter = OnlineSubtitleLanguageFilter.ALL,
+    val languageFilter: OnlineSubtitleLanguageFilter = OnlineSubtitleLanguageFilter.AUTO,
     val providers: Set<OnlineSubtitleProvider> = setOf(
         OnlineSubtitleProvider.OPEN_SUBTITLES,
         OnlineSubtitleProvider.SUBTITLE_CAT,
@@ -161,5 +163,79 @@ data class OnlineSubtitleSearchPreferences(
     fun withProviderToggled(provider: OnlineSubtitleProvider): OnlineSubtitleSearchPreferences {
         if (providers == setOf(provider)) return this
         return copy(providers = if (provider in providers) providers - provider else providers + provider)
+    }
+
+    // 返回传给各来源的语言码；null 表示不限定语言
+    fun resolveLanguageCode(preferredSubtitleLanguage: String): String? = when (languageFilter) {
+        OnlineSubtitleLanguageFilter.AUTO ->
+            preferredSubtitleLanguage
+                .takeIf { it.isNotBlank() }
+                ?.let(OnlineSubtitleLanguage::normalize)
+
+        else -> languageFilter.languageCode
+    }
+}
+
+// 排序依据，取自当前片源文件名；缺项只会让该维度失效，不影响其余维度
+data class OnlineSubtitleMatchHint(
+    val releaseTokens: Set<String> = emptySet(),
+    val episodeTag: String = "",
+    val year: String = "",
+    val preferredLanguageCode: String = "",
+) {
+
+    // 语言、季集、年份依次优先于片源版本重合度，下载量只作末位参考
+    fun resultComparator(): Comparator<OnlineSubtitleResult> = compareByDescending<OnlineSubtitleResult> { languageScoreOf(it) }
+        .thenByDescending { episodeScoreOf(it) }
+        .thenByDescending { yearScoreOf(it) }
+        .thenByDescending { tokenOverlapOf(it) }
+        .thenByDescending { it.downloadCount ?: 0 }
+
+    private fun languageScoreOf(result: OnlineSubtitleResult): Int {
+        if (preferredLanguageCode.isEmpty()) return 0
+        val normalized = OnlineSubtitleLanguage.normalize(result.languageCode)
+        if (normalized == preferredLanguageCode) return 2
+        return if (normalized.substringBefore('-') == preferredLanguageCode.substringBefore('-')) 1 else 0
+    }
+
+    private fun episodeScoreOf(result: OnlineSubtitleResult): Int {
+        if (episodeTag.isEmpty()) return 0
+        return if (result.title.contains(episodeTag, ignoreCase = true)) 1 else 0
+    }
+
+    private fun yearScoreOf(result: OnlineSubtitleResult): Int {
+        if (year.isEmpty()) return 0
+        return if (result.title.contains(year)) 1 else 0
+    }
+
+    private fun tokenOverlapOf(result: OnlineSubtitleResult): Int {
+        if (releaseTokens.isEmpty()) return 0
+        return tokenize(result.title).count { it in releaseTokens }
+    }
+
+    companion object {
+        private val TOKEN_SEPARATOR_REGEX = Regex("[^\\p{L}\\p{N}]+")
+        private val YEAR_REGEX = Regex("(19|20)\\d{2}")
+        private val EPISODE_REGEX = Regex("s\\d{1,2}e\\d{1,3}", RegexOption.IGNORE_CASE)
+
+        fun from(
+            releaseName: String,
+            preferredSubtitleLanguage: String,
+        ): OnlineSubtitleMatchHint = OnlineSubtitleMatchHint(
+            releaseTokens = tokenize(releaseName),
+            episodeTag = EPISODE_REGEX.find(releaseName)?.value?.lowercase().orEmpty(),
+            year = YEAR_REGEX.find(releaseName)?.value.orEmpty(),
+            preferredLanguageCode = preferredSubtitleLanguage
+                .takeIf { it.isNotBlank() }
+                ?.let(OnlineSubtitleLanguage::normalize)
+                .orEmpty(),
+        )
+
+        // 单字符碎片没有区分度，只保留两字符以上的词
+        private fun tokenize(text: String): Set<String> = text
+            .lowercase()
+            .split(TOKEN_SEPARATOR_REGEX)
+            .filter { it.length >= 2 }
+            .toSet()
     }
 }

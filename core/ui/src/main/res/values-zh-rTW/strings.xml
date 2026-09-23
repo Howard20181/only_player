@@ -310,6 +310,7 @@
     <string name="online_subtitle_result_in_use">正在使用</string>
     <string name="online_subtitle_cancel_download">取消下載</string>
     <string name="online_subtitle_back_to_tracks">查看字幕列表</string>
+    <string name="online_subtitle_details">字幕詳情</string>
     <string name="online_subtitle_search_settings">字幕搜尋設定</string>
     <string name="online_subtitle_default_language">預設搜尋語言</string>
     <string name="online_subtitle_default_sources">字幕來源</string>
@@ -329,6 +330,7 @@
     <string name="online_subtitle_vip_required">該字幕需要 OpenSubtitles VIP 才能下載，換一條試試</string>
     <string name="online_subtitle_search_language">語言</string>
     <string name="online_subtitle_search_source">來源</string>
+    <string name="online_subtitle_language_auto">跟隨首選字幕語言</string>
     <string name="online_subtitle_language_all">全部</string>
     <string name="online_subtitle_language_chinese_simplified">簡體中文</string>
     <string name="online_subtitle_language_chinese_traditional">繁體中文</string>

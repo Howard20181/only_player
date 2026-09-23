@@ -1,6 +1,7 @@
 package one.only.player.feature.player.ui
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -11,6 +12,10 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -24,7 +29,9 @@ import one.only.player.core.model.OnlineSubtitleResult
 import one.only.player.core.model.OnlineSubtitleSearchPreferences
 import one.only.player.core.ui.R
 import one.only.player.core.ui.base.DataState
+import one.only.player.core.ui.components.AppDialog
 import one.only.player.core.ui.components.ListSectionTitle
+import one.only.player.core.ui.designsystem.AppIcons
 import one.only.player.core.ui.extensions.label
 import one.only.player.feature.player.state.OnlineSubtitleResultStatus
 import one.only.player.feature.player.state.OnlineSubtitleSearchUiState
@@ -32,8 +39,12 @@ import one.only.player.feature.player.ui.panel.PanelActionButton
 import one.only.player.feature.player.ui.panel.PanelOptionList
 import one.only.player.feature.player.ui.panel.PanelOptionRow
 import one.only.player.feature.player.ui.panel.rememberPlayerPanelTokens
+import top.yukonga.miuix.kmp.basic.ButtonDefaults as MiuixButtonDefaults
 import top.yukonga.miuix.kmp.basic.CircularProgressIndicator
+import top.yukonga.miuix.kmp.basic.Icon as MiuixIcon
+import top.yukonga.miuix.kmp.basic.IconButton as MiuixIconButton
 import top.yukonga.miuix.kmp.basic.Text as MiuixText
+import top.yukonga.miuix.kmp.basic.TextButton as MiuixTextButton
 import top.yukonga.miuix.kmp.basic.TextField
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
@@ -47,6 +58,7 @@ internal fun OnlineSubtitleSearchContent(
     onShowSubtitleTracks: () -> Unit,
 ) {
     val scrollState = rememberScrollState()
+    var detailsResult by remember { mutableStateOf<OnlineSubtitleResult?>(null) }
     PanelOptionList(
         modifier = Modifier
             .verticalScroll(scrollState)
@@ -88,17 +100,72 @@ internal fun OnlineSubtitleSearchContent(
         }
         state.results.forEach { result ->
             val status = state.statusOf(result)
-            PanelOptionRow(
-                isSelected = status == OnlineSubtitleResultStatus.IN_USE,
-                text = result.title,
-                description = result.describe(status),
-                testTag = "item_online_subtitle_${result.key}",
-                // 已添加的条目不再接受点击，避免重复下载同一份字幕
-                isEnabled = state.downloadingKey == null && status == OnlineSubtitleResultStatus.AVAILABLE,
-                onClick = { onSelectResult(result) },
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                PanelOptionRow(
+                    modifier = Modifier.weight(1f),
+                    isSelected = status == OnlineSubtitleResultStatus.IN_USE,
+                    text = result.title,
+                    description = result.describe(status),
+                    testTag = "item_online_subtitle_${result.key}",
+                    // 已添加的条目不再接受点击，避免重复下载同一份字幕
+                    isEnabled = state.downloadingKey == null && status == OnlineSubtitleResultStatus.AVAILABLE,
+                    onClick = { onSelectResult(result) },
+                )
+                MiuixIconButton(
+                    modifier = Modifier.testTag("btn_online_subtitle_details_${result.key}"),
+                    onClick = { detailsResult = result },
+                ) {
+                    MiuixIcon(
+                        imageVector = AppIcons.Info,
+                        contentDescription = stringResource(R.string.online_subtitle_details),
+                    )
+                }
+            }
         }
     }
+
+    detailsResult?.let { result ->
+        OnlineSubtitleDetailsDialog(
+            result = result,
+            onDismiss = { detailsResult = null },
+        )
+    }
+}
+
+// 结果行会截断长版本名，详情里给出完整名称和全部匹配依据
+@Composable
+private fun OnlineSubtitleDetailsDialog(
+    result: OnlineSubtitleResult,
+    onDismiss: () -> Unit,
+) {
+    AppDialog(
+        modifier = Modifier.testTag("dialog_online_subtitle_details"),
+        onDismissRequest = onDismiss,
+        title = stringResource(R.string.online_subtitle_details),
+        content = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                MiuixText(
+                    modifier = Modifier.testTag("text_online_subtitle_details_title"),
+                    text = result.title,
+                    color = MiuixTheme.colorScheme.onSurface,
+                    style = MiuixTheme.textStyles.body1,
+                )
+                MiuixText(
+                    text = result.describe(OnlineSubtitleResultStatus.AVAILABLE),
+                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                    style = MiuixTheme.textStyles.body2,
+                )
+            }
+        },
+        confirmButton = {
+            MiuixTextButton(
+                modifier = Modifier.testTag("btn_online_subtitle_details_close"),
+                text = stringResource(R.string.done),
+                colors = MiuixButtonDefaults.textButtonColorsPrimary(),
+                onClick = onDismiss,
+            )
+        },
+    )
 }
 
 @Composable

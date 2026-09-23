@@ -12,7 +12,7 @@ import one.only.player.core.data.remote.subtitle.OpenSubtitlesRestClient
 import one.only.player.core.data.remote.subtitle.OpenSubtitlesXmlRpcClient
 import one.only.player.core.data.remote.subtitle.SubtitleCatClient
 import one.only.player.core.data.remote.subtitle.SubtitleSearchFailedException
-import one.only.player.core.model.OnlineSubtitleLanguageFilter
+import one.only.player.core.model.OnlineSubtitleMatchHint
 import one.only.player.core.model.OnlineSubtitlePayload
 import one.only.player.core.model.OnlineSubtitleProvider
 import one.only.player.core.model.OnlineSubtitleProviderStatus
@@ -29,20 +29,21 @@ class RemoteSubtitleSearchRepository @Inject constructor(
     // 每个来源独立更新，失败状态与已返回的字幕一起保留。
     override fun search(
         query: String,
-        languageFilter: OnlineSubtitleLanguageFilter,
+        languageCode: String?,
         providers: Set<OnlineSubtitleProvider>,
+        matchHint: OnlineSubtitleMatchHint,
     ): Flow<OnlineSubtitleSearchResult> = combine(
         providers.map { provider ->
             flow {
                 emit(ProviderOutcome(provider, OnlineSubtitleProviderStatus.SEARCHING))
-                emit(searchProvider(provider, query, languageFilter.languageCode))
+                emit(searchProvider(provider, query, languageCode))
             }
         },
     ) { outcomes ->
         OnlineSubtitleSearchResult(
             results = outcomes.flatMap { it.results }
                 .distinctBy { result -> result.key }
-                .sortedByDescending { result -> result.downloadCount ?: 0 }
+                .sortedWith(matchHint.resultComparator())
                 .take(MAX_RESULTS),
             providerStates = outcomes.associate { it.provider to it.status },
         )
