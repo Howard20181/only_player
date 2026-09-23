@@ -146,6 +146,7 @@ import one.only.player.feature.player.state.rememberRotationState
 import one.only.player.feature.player.state.rememberSeekGestureState
 import one.only.player.feature.player.state.rememberSleepTimerState
 import one.only.player.feature.player.state.rememberTapGestureState
+import one.only.player.feature.player.state.rememberTracksState
 import one.only.player.feature.player.state.rememberVideoZoomAndContentScaleState
 import one.only.player.feature.player.state.rememberVolumeAndBrightnessGestureState
 import one.only.player.feature.player.state.rememberVolumeState
@@ -247,6 +248,12 @@ internal fun MediaPlayerScreen(
     val playbackMarks by viewModel.playbackMarks.collectAsStateWithLifecycle()
     val onlineSubtitleSearch by viewModel.onlineSubtitleSearch.collectAsStateWithLifecycle()
     val metadataState = rememberMetadataState(player)
+    val subtitleTracksState = rememberTracksState(player, C.TRACK_TYPE_TEXT)
+    val selectedSubtitleId = subtitleTracksState.tracks
+        .firstOrNull { it.isSelected }
+        ?.getTrackFormat(0)
+        ?.id
+        ?.substringAfter(':')
     val chaptersState = rememberChaptersState(player)
     val mediaPresentationState = rememberMediaPresentationState(player)
     val controlsVisibilityState = rememberControlsVisibilityState(
@@ -326,6 +333,13 @@ internal fun MediaPlayerScreen(
 
     LaunchedEffect(metadataState.title) {
         viewModel.updateOnlineSubtitleMediaItem(player.currentMediaItem, metadataState.title)
+    }
+
+    LaunchedEffect(subtitleTracksState.addedSubtitleIds, selectedSubtitleId) {
+        viewModel.updateAddedOnlineSubtitles(
+            addedSubtitleIds = subtitleTracksState.addedSubtitleIds,
+            selectedSubtitleId = selectedSubtitleId,
+        )
     }
 
     LaunchedEffect(pictureInPictureState.isInPictureInPictureMode) {
@@ -1205,6 +1219,8 @@ internal fun MediaPlayerScreen(
                         onQueryChange = viewModel::onOnlineSubtitleQueryChange,
                         onSearch = viewModel::onSearchOnlineSubtitles,
                         onSelectResult = viewModel::onDownloadOnlineSubtitle,
+                        onCancelDownload = viewModel::onCancelOnlineSubtitleDownload,
+                        onShowSubtitleTracks = { navigateToMenuRoute(MenuRoute.Subtitle) },
                     )
 
                     MenuRoute.SubtitleSearchLanguage -> OnlineSubtitleLanguageContent(

@@ -26,6 +26,7 @@ import one.only.player.core.ui.R
 import one.only.player.core.ui.base.DataState
 import one.only.player.core.ui.components.ListSectionTitle
 import one.only.player.core.ui.extensions.label
+import one.only.player.feature.player.state.OnlineSubtitleResultStatus
 import one.only.player.feature.player.state.OnlineSubtitleSearchUiState
 import one.only.player.feature.player.ui.panel.PanelActionButton
 import one.only.player.feature.player.ui.panel.PanelOptionList
@@ -42,6 +43,8 @@ internal fun OnlineSubtitleSearchContent(
     onQueryChange: (String) -> Unit,
     onSearch: () -> Unit,
     onSelectResult: (OnlineSubtitleResult) -> Unit,
+    onCancelDownload: () -> Unit,
+    onShowSubtitleTracks: () -> Unit,
 ) {
     val scrollState = rememberScrollState()
     PanelOptionList(
@@ -69,17 +72,29 @@ internal fun OnlineSubtitleSearchContent(
             onClick = onSearch,
         )
         OnlineSubtitleSearchStatus(state = state, onRetry = onSearch)
+        if (state.downloadingKey != null) {
+            PanelActionButton(
+                modifier = Modifier.testTag("btn_online_subtitle_cancel_download"),
+                text = stringResource(R.string.online_subtitle_cancel_download),
+                onClick = onCancelDownload,
+            )
+        }
+        if (state.hasAddedResults) {
+            PanelActionButton(
+                modifier = Modifier.testTag("btn_online_subtitle_back_to_tracks"),
+                text = stringResource(R.string.online_subtitle_back_to_tracks),
+                onClick = onShowSubtitleTracks,
+            )
+        }
         state.results.forEach { result ->
+            val status = state.statusOf(result)
             PanelOptionRow(
-                isSelected = false,
+                isSelected = status == OnlineSubtitleResultStatus.IN_USE,
                 text = result.title,
-                description = if (state.downloadingKey == result.key) {
-                    stringResource(R.string.online_subtitle_downloading)
-                } else {
-                    result.describe()
-                },
+                description = result.describe(status),
                 testTag = "item_online_subtitle_${result.key}",
-                isEnabled = state.downloadingKey == null,
+                // 已添加的条目不再接受点击，避免重复下载同一份字幕
+                isEnabled = state.downloadingKey == null && status == OnlineSubtitleResultStatus.AVAILABLE,
                 onClick = { onSelectResult(result) },
             )
         }
@@ -201,8 +216,16 @@ internal fun OnlineSubtitleLanguageContent(
 }
 
 @Composable
-private fun OnlineSubtitleResult.describe(): String {
+private fun OnlineSubtitleResult.describe(status: OnlineSubtitleResultStatus): String {
+    if (status == OnlineSubtitleResultStatus.DOWNLOADING) return stringResource(R.string.online_subtitle_downloading)
     val parts = buildList {
+        when (status) {
+            OnlineSubtitleResultStatus.ADDED -> add(stringResource(R.string.online_subtitle_result_added))
+            OnlineSubtitleResultStatus.IN_USE -> add(stringResource(R.string.online_subtitle_result_in_use))
+            OnlineSubtitleResultStatus.AVAILABLE,
+            OnlineSubtitleResultStatus.DOWNLOADING,
+            -> Unit
+        }
         val language = OnlineSubtitleLanguageFilter.entries.firstOrNull { it.languageCode == languageCode }
         add(language?.label() ?: languageName.ifEmpty { languageCode.ifEmpty { stringResource(R.string.unknown) } })
         if (format.isNotEmpty()) add(format.uppercase())

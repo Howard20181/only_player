@@ -127,6 +127,7 @@ class PlayerViewModel @Inject constructor(
     val onlineSubtitleEvents = internalOnlineSubtitleEvents.receiveAsFlow()
     private var subtitleSearchJob: Job? = null
     private var subtitleDownloadJob: Job? = null
+    private var subtitleTrackSyncJob: Job? = null
     private var subtitleMediaId: String? = null
     private var hasEditedSubtitleQuery = false
     private val playbackMarkMediaUri = MutableStateFlow<String?>(null)
@@ -483,6 +484,29 @@ class PlayerViewModel @Inject constructor(
         }
     }
 
+    // 已挂载字幕的来源编号存在各自的元数据里，逐个读回才能标记搜索结果的已添加状态
+    fun updateAddedOnlineSubtitles(
+        addedSubtitleIds: List<String>,
+        selectedSubtitleId: String?,
+    ) {
+        subtitleTrackSyncJob?.cancel()
+        if (addedSubtitleIds.isEmpty()) {
+            internalOnlineSubtitleSearch.update { it.copy(addedKeys = emptySet(), selectedKey = null) }
+            return
+        }
+        subtitleTrackSyncJob = viewModelScope.launch {
+            val keysById = addedSubtitleIds.associateWith { id ->
+                onlineSubtitleRepository.getMetadata(Uri.parse(id))?.searchResultKey
+            }
+            internalOnlineSubtitleSearch.update {
+                it.copy(
+                    addedKeys = keysById.values.filterNotNull().toSet(),
+                    selectedKey = selectedSubtitleId?.let(keysById::get),
+                )
+            }
+        }
+    }
+
     fun onOnlineSubtitleQueryChange(query: String) {
         hasEditedSubtitleQuery = true
         subtitleSearchJob?.cancel()
@@ -549,6 +573,13 @@ class PlayerViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    // 取消后 finally 里的状态清理仍会执行，界面据此收起取消入口
+    fun onCancelOnlineSubtitleDownload() {
+        if (internalOnlineSubtitleSearch.value.downloadingKey == null) return
+        subtitleDownloadJob?.cancel()
+        internalOnlineSubtitleSearch.update { it.copy(downloadingKey = null) }
     }
 
     private suspend fun MediaItem.toPlaybackMarkMediaUri(): String = buildRemotePlaybackStateKey(

@@ -119,6 +119,7 @@ class OnlineSubtitleRepository(
                     title = result.title,
                     languageCode = OnlineSubtitleLanguage.normalize(result.languageCode),
                     provider = result.provider,
+                    providerId = result.providerId,
                 ),
             )
         } catch (exception: IOException) {
@@ -185,6 +186,7 @@ class OnlineSubtitleRepository(
                 title = json.getString("title"),
                 languageCode = json.optString("languageCode"),
                 provider = json.optString("provider").takeIf { it.isNotEmpty() }?.let(OnlineSubtitleProvider::valueOf),
+                providerId = json.optString("providerId"),
             )
         } catch (exception: Exception) {
             Logger.error(TAG, "Failed to read saved subtitle metadata", exception)
@@ -200,6 +202,7 @@ class OnlineSubtitleRepository(
             .put("title", subtitle.title)
             .put("languageCode", subtitle.languageCode)
             .put("provider", subtitle.provider?.name.orEmpty())
+            .put("providerId", subtitle.providerId)
         val metadata = AtomicFile(File(subtitleDirectory, "${file.name}.json"))
         val output = metadata.startWrite()
         try {
@@ -268,7 +271,13 @@ data class SavedOnlineSubtitle(
     val title: String,
     val languageCode: String = "",
     val provider: OnlineSubtitleProvider? = null,
-)
+    val providerId: String = "",
+) {
+
+    // 与 OnlineSubtitleResult.key 同构，用于把已保存字幕对回搜索结果；URL 添加的字幕没有来源编号
+    val searchResultKey: String?
+        get() = provider?.takeIf { providerId.isNotEmpty() }?.let { "${it.name}:$providerId" }
+}
 
 data class DownloadedOnlineSubtitle(
     val file: File,
