@@ -137,17 +137,25 @@ Confirm that the correct subtitle track or file is selected. Check text encoding
 
 | Tool | Requirement |
 |---|---|
-| JDK | `25` |
+| JDK | `26`; `scripts/prebuild.py` downloads a portable one into `build/jdk/` |
 | Android Studio or SDK command-line tools | Android SDK Platform `37` |
-| Python | `3.10+` for the build script |
+| Python | `3.10+` for the build scripts |
 | Gradle | Use the wrapper included in the repository |
 
 ```bash
 git clone https://github.com/Kindness-Kismet/only_player.git
 cd only_player
+python scripts/prebuild.py
 ```
 
-Open the project in Android Studio, select JDK 25 for Gradle, and sync the project. For command-line builds, configure the Android SDK path through `local.properties` (`sdk.dir`) or `ANDROID_HOME`.
+`prebuild.py` restores any missing Gradle wrapper file, downloads Temurin JDK 26 into `build/jdk/` when no portable JDK is present, and verifies the Android SDK is reachable. `scripts/build.py` then passes that JDK to Gradle, so no system-wide JDK installation is required.
+
+| Option | Behavior |
+|---|---|
+| `--force` | Replace the existing portable JDK |
+| `--verbose` | Print the download URL and detected SDK path |
+
+Open the project in Android Studio, select JDK 26 for Gradle, and sync the project. For command-line builds, configure the Android SDK path through `local.properties` (`sdk.dir`) or `ANDROID_HOME`.
 
 ### Architecture
 
@@ -166,7 +174,7 @@ core/ui/              Shared Compose components, strings, and themes
 feature/player/       Player UI, playback service, and playback flow
 feature/settings/     Settings screens and preference logic
 feature/videopicker/  Media library, search, and quick settings
-scripts/              APK build script
+scripts/              Prebuild environment setup and APK build script
 .github/workflows/    Validation and release workflows
 ```
 
@@ -191,6 +199,8 @@ See [AGENTS.md](AGENTS.md) for the complete architecture and coding rules.
 ```bash
 python scripts/build.py build-apk --abi arm64-v8a --build-type debug
 ```
+
+Run `python scripts/prebuild.py` first; the build script fails early when the portable JDK is missing.
 
 | Option | Values and behavior |
 |---|---|

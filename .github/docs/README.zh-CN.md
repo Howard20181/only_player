@@ -137,7 +137,7 @@ Only Player 是 Android 本地视频播放器，基于 Kotlin、Jetpack Compose�
 
 | 工具 | 要求 |
 |---|---|
-| JDK | `25` |
+| JDK | `26`，`scripts/prebuild.py` 会下载便携版到 `build/jdk/` |
 | Android Studio 或 SDK 命令行工具 | Android SDK Platform `37` |
 | Python | 构建脚本需要 `3.10+` |
 | Gradle | 使用仓库自带的包装脚本 |
@@ -145,9 +145,17 @@ Only Player 是 Android 本地视频播放器，基于 Kotlin、Jetpack Compose�
 ```bash
 git clone https://github.com/Kindness-Kismet/only_player.git
 cd only_player
+python scripts/prebuild.py
 ```
 
-用 Android Studio 打开项目，将 Gradle 使用的 JDK 设为 25，然后同步项目。命令行构建时，通过 `local.properties` 中的 `sdk.dir` 或 `ANDROID_HOME` 配置 Android SDK 路径。
+`prebuild.py` 会补齐缺失的 Gradle 包装脚本文件，在没有便携 JDK 时下载 Temurin JDK 26 到 `build/jdk/`，并确认能找到 Android SDK。之后 `scripts/build.py` 会把这个 JDK 传给 Gradle，不需要在系统里安装 JDK。
+
+| 参数 | 作用 |
+|---|---|
+| `--force` | 替换已有的便携 JDK |
+| `--verbose` | 打印下载地址和探测到的 SDK 路径 |
+
+用 Android Studio 打开项目，将 Gradle 使用的 JDK 设为 26，然后同步项目。命令行构建时，通过 `local.properties` 中的 `sdk.dir` 或 `ANDROID_HOME` 配置 Android SDK 路径。
 
 ### 架构
 
@@ -166,7 +174,7 @@ core/ui/              共享 Compose 组件、字符串与主题
 feature/player/       播放器界面、播放服务与播放流程
 feature/settings/     设置页面与偏好逻辑
 feature/videopicker/  媒体库、搜索与快捷设置
-scripts/              安装包构建脚本
+scripts/              构建环境准备与安装包构建脚本
 .github/workflows/    检查与发布工作流
 ```
 
@@ -191,6 +199,8 @@ scripts/              安装包构建脚本
 ```bash
 python scripts/build.py build-apk --abi arm64-v8a --build-type debug
 ```
+
+先执行 `python scripts/prebuild.py`；缺少便携 JDK 时构建脚本会直接报错退出。
 
 | 参数 | 可选值与作用 |
 |---|---|
