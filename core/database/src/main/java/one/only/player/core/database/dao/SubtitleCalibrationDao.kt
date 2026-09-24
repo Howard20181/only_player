@@ -19,13 +19,19 @@ interface SubtitleCalibrationDao {
     suspend fun upsertAll(calibrations: List<SubtitleCalibrationEntity>)
 
     @Query("SELECT * FROM subtitle_calibration WHERE media_uri = :mediaUri AND subtitle_key = :subtitleKey")
-    suspend fun get(mediaUri: String, subtitleKey: String): SubtitleCalibrationEntity?
+    suspend fun get(
+        mediaUri: String,
+        subtitleKey: String,
+    ): SubtitleCalibrationEntity?
 
     @Query("SELECT * FROM subtitle_calibration WHERE media_uri = :mediaUri")
     suspend fun getByMediaUri(mediaUri: String): List<SubtitleCalibrationEntity>
 
     @Query("DELETE FROM subtitle_calibration WHERE media_uri = :mediaUri AND subtitle_key = :subtitleKey")
-    suspend fun delete(mediaUri: String, subtitleKey: String)
+    suspend fun delete(
+        mediaUri: String,
+        subtitleKey: String,
+    )
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertMediaState(state: MediumStateEntity)

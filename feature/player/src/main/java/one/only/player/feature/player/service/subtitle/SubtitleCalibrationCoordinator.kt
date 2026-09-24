@@ -18,7 +18,10 @@ internal class SubtitleCalibrationCoordinator(
 ) {
     private val mutex = Mutex()
 
-    data class SubtitleTrack(val key: String, val index: Int)
+    data class SubtitleTrack(
+        val key: String,
+        val index: Int,
+    )
 
     fun selectedTrack(player: Player): SubtitleTrack? {
         val tracks = player.currentTracks.groups.filter { it.type == C.TRACK_TYPE_TEXT && it.isSupported }
@@ -36,7 +39,7 @@ internal class SubtitleCalibrationCoordinator(
         mediaItem: MediaItem,
         track: SubtitleTrack,
     ): SubtitleCalibration = mutex.withLock {
-        mediaRepository.getSubtitleCalibration(
+        mediaRepository.getOrCreateSubtitleCalibration(
             uri = resolvePlaybackStateUri(mediaItem),
             subtitleKey = track.key,
             trackIndex = track.index,

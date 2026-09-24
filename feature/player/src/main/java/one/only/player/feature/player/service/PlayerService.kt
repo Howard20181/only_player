@@ -262,7 +262,7 @@ class PlayerService : MediaSessionService() {
         )
     }
 
-    // 已应用校准值的字幕键，避免同一轨道重复读库
+    // 当前加载或应用的字幕键，避免同一轨道重复查询
     private var appliedSubtitleCalibrationKey: String? = null
     private var subtitleCalibrationLoadJob: Job? = null
     private var activeSubtitleCalibration = SubtitleCalibration.Default
@@ -599,7 +599,10 @@ class PlayerService : MediaSessionService() {
             )
         }
 
-        override fun onEvents(player: Player, events: Player.Events) {
+        override fun onEvents(
+            player: Player,
+            events: Player.Events,
+        ) {
             if (events.containsAny(Player.EVENT_TRACKS_CHANGED, Player.EVENT_MEDIA_ITEM_TRANSITION)) {
                 mediaSession?.player?.let(::applySubtitleCalibrationForSelectedTrack)
             }
@@ -2334,7 +2337,6 @@ class PlayerService : MediaSessionService() {
                 if (mediaSession?.player !== player || player.currentMediaItem?.mediaId != mediaItem.mediaId) return@launch
                 if (subtitleCalibrationCoordinator.selectedTrack(player)?.key != track.key) return@launch
                 applySubtitleCalibration(player, calibration)
-                Logger.debug(TAG, "字幕校准已应用 track=${track.key.hashCode()} delay=${calibration.delayMilliseconds} speed=${calibration.speed}")
             } catch (exception: CancellationException) {
                 throw exception
             } catch (exception: Exception) {
@@ -2344,7 +2346,10 @@ class PlayerService : MediaSessionService() {
         }
     }
 
-    private fun applySubtitleCalibration(player: Player, calibration: SubtitleCalibration) {
+    private fun applySubtitleCalibration(
+        player: Player,
+        calibration: SubtitleCalibration,
+    ) {
         activeSubtitleCalibration = calibration
         player.playerSpecificSubtitleDelayMilliseconds = calibration.delayMilliseconds
         player.playerSpecificSubtitleSpeed = calibration.speed

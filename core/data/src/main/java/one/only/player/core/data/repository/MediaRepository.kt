@@ -35,8 +35,17 @@ interface MediaRepository {
     suspend fun updateSubtitleDelay(uri: String, delay: Long)
     suspend fun updateSubtitleSpeed(uri: String, speed: Float)
 
-    suspend fun getSubtitleCalibration(uri: String, subtitleKey: String, trackIndex: Int): SubtitleCalibration
-    suspend fun saveSubtitleCalibration(uri: String, subtitleKey: String, calibration: SubtitleCalibration)
+    suspend fun getOrCreateSubtitleCalibration(
+        uri: String,
+        subtitleKey: String,
+        trackIndex: Int,
+    ): SubtitleCalibration
+
+    suspend fun saveSubtitleCalibration(
+        uri: String,
+        subtitleKey: String,
+        calibration: SubtitleCalibration,
+    )
 
     suspend fun moveVideosToRecycleBin(uris: List<String>): List<String>
     suspend fun moveVideosToFolder(

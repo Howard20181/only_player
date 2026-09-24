@@ -16,7 +16,10 @@ import one.only.player.feature.player.service.preciseSeekTo
 import one.only.player.feature.player.service.setMediaControllerIsScrubbingModeEnabled
 import one.only.player.feature.player.service.setMediaControllerIsSeekPreviewEnabled
 
-fun Player.switchTrack(trackType: @C.TrackType Int, trackIndex: Int) {
+fun Player.switchTrack(
+    trackType: @C.TrackType Int,
+    trackIndex: Int,
+) {
     val trackTypeText = when (trackType) {
         C.TRACK_TYPE_AUDIO -> "audio"
         C.TRACK_TYPE_TEXT -> "subtitle"
@@ -42,7 +45,7 @@ fun Player.switchTrack(trackType: @C.TrackType Int, trackIndex: Int) {
         val format = selectedGroup.mediaTrackGroup.getFormat(0)
         Logger.debug(
             "Player",
-            "Track format: mime=${format.sampleMimeType}, label=${format.label}, id=${format.id}",
+            "Track format: mime=${format.sampleMimeType}",
         )
         val trackSelectionOverride = TrackSelectionOverride(tracks[trackIndex].mediaTrackGroup, 0)
 
@@ -53,6 +56,17 @@ fun Player.switchTrack(trackType: @C.TrackType Int, trackIndex: Int) {
             .setOverrideForType(trackSelectionOverride)
             .build()
     }
+}
+
+// 元数据中的新增列表不包含同目录自动加载的字幕，需与媒体配置合并
+@UnstableApi
+internal fun Player.externalSubtitleIds(): Set<String> {
+    val configurationIds = currentMediaItem
+        ?.localConfiguration
+        ?.subtitleConfigurations
+        ?.mapNotNull { it.id }
+        .orEmpty()
+    return (configurationIds + currentMediaItem?.mediaMetadata?.addedSubtitleIds.orEmpty()).toSet()
 }
 
 @UnstableApi

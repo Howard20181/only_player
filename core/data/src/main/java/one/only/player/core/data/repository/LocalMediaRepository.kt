@@ -243,7 +243,7 @@ class LocalMediaRepository @Inject constructor(
         )
     }
 
-    override suspend fun getSubtitleCalibration(
+    override suspend fun getOrCreateSubtitleCalibration(
         uri: String,
         subtitleKey: String,
         trackIndex: Int,
@@ -256,7 +256,7 @@ class LocalMediaRepository @Inject constructor(
     } catch (exception: CancellationException) {
         throw exception
     } catch (exception: Exception) {
-        Logger.error("LocalMediaRepository", "字幕校准读取失败", exception)
+        Logger.error(TAG, "字幕校准读取失败", exception)
         throw exception
     }
 
@@ -278,7 +278,7 @@ class LocalMediaRepository @Inject constructor(
         } catch (exception: CancellationException) {
             throw exception
         } catch (exception: Exception) {
-            Logger.error("LocalMediaRepository", "字幕校准保存失败", exception)
+            Logger.error(TAG, "字幕校准保存失败", exception)
             throw exception
         }
     }
@@ -652,6 +652,8 @@ class LocalMediaRepository @Inject constructor(
     private fun MediumWithInfo.isMarkedInRecycleBin(): Boolean = mediumStateEntity?.isInRecycleBin == true
 
     companion object {
+        private const val TAG = "LocalMediaRepository"
+
         // 与 Media3 C.TIME_UNSET 数值一致；负位置在 Video.playedPercentage 中按已播完处理。
         private const val PLAYED_PLAYBACK_POSITION = Long.MIN_VALUE + 1
 

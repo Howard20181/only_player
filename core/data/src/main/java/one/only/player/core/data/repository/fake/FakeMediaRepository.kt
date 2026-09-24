@@ -105,7 +105,7 @@ class FakeMediaRepository : MediaRepository {
     override suspend fun updateSubtitleSpeed(uri: String, speed: Float) {
     }
 
-    override suspend fun getSubtitleCalibration(
+    override suspend fun getOrCreateSubtitleCalibration(
         uri: String,
         subtitleKey: String,
         trackIndex: Int,
