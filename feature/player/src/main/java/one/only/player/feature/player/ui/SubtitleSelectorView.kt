@@ -44,8 +44,8 @@ import one.only.player.core.ui.components.AppDialog
 import one.only.player.core.ui.components.ListSectionTitle
 import one.only.player.core.ui.components.SubtitleStylePanel
 import one.only.player.core.ui.designsystem.AppIcons
+import one.only.player.feature.player.extensions.externalSubtitleId
 import one.only.player.feature.player.extensions.getName
-import one.only.player.feature.player.state.SubtitleOptionsEvent
 import one.only.player.feature.player.state.rememberSubtitleOptionsState
 import one.only.player.feature.player.state.rememberTracksState
 import one.only.player.feature.player.ui.panel.PanelActionButton
@@ -69,11 +69,10 @@ fun SubtitleSelectorContent(
     onShowSubtitleSearch: () -> Unit,
     preferences: PlayerPreferences,
     onPreferencesChange: (PlayerPreferences) -> Unit,
-    onEvent: (SubtitleOptionsEvent) -> Unit = {},
     onDismiss: () -> Unit,
 ) {
     val subtitleTracksState = rememberTracksState(player, C.TRACK_TYPE_TEXT)
-    val subtitleOptionsState = rememberSubtitleOptionsState(player, onEvent)
+    val subtitleOptionsState = rememberSubtitleOptionsState(player)
     var isOnlineSubtitleDialogVisible by remember { mutableStateOf(false) }
     var onlineSubtitleUrl by remember { mutableStateOf("") }
 
@@ -85,7 +84,7 @@ fun SubtitleSelectorContent(
     ) {
         PanelOptionList(modifier = Modifier.selectableGroup()) {
             subtitleTracksState.tracks.forEachIndexed { index, track ->
-                val subtitleId = track.getTrackFormat(0).id?.substringAfter(':')
+                val subtitleId = track.externalSubtitleId(subtitleTracksState.addedSubtitleIds)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     PanelOptionRow(
                         modifier = Modifier.weight(1f),
@@ -154,6 +153,14 @@ fun SubtitleSelectorContent(
             value = subtitleOptionsState.speedMultiplier,
             onValueChange = { subtitleOptionsState.setSpeed(it) },
         )
+        if (subtitleOptionsState.isCalibrated) {
+            Spacer(modifier = Modifier.size(12.dp))
+            PanelActionButton(
+                modifier = Modifier.testTag("btn_reset_subtitle_calibration"),
+                text = stringResource(R.string.subtitle_calibration_reset),
+                onClick = { subtitleOptionsState.reset() },
+            )
+        }
         Spacer(modifier = Modifier.size(16.dp))
         ListSectionTitle(text = stringResource(id = R.string.subtitle_appearance))
         SubtitleStylePanel(

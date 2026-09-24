@@ -69,7 +69,6 @@ import one.only.player.feature.player.extensions.toReleaseName
 import one.only.player.feature.player.extensions.toSearchQuery
 import one.only.player.feature.player.state.OnlineSubtitleEvent
 import one.only.player.feature.player.state.OnlineSubtitleSearchUiState
-import one.only.player.feature.player.state.SubtitleOptionsEvent
 import one.only.player.feature.player.state.VideoZoomEvent
 import one.only.player.feature.player.subtitle.OnlineSubtitleRepository
 
@@ -379,29 +378,6 @@ class PlayerViewModel @Inject constructor(
             is VideoZoomEvent.ZoomChanged -> {
                 updateVideoZoom(event.mediaItem.toPlaybackStateUri(), event.zoom)
             }
-        }
-    }
-
-    fun onSubtitleOptionEvent(event: SubtitleOptionsEvent) {
-        when (event) {
-            is SubtitleOptionsEvent.DelayChanged -> {
-                updateSubtitleDelay(event.mediaItem.toPlaybackStateUri(), event.delay)
-            }
-            is SubtitleOptionsEvent.SpeedChanged -> {
-                updateSubtitleSpeed(event.mediaItem.toPlaybackStateUri(), event.speed)
-            }
-        }
-    }
-
-    private fun updateSubtitleDelay(uri: String, delay: Long) {
-        viewModelScope.launch {
-            mediaRepository.updateSubtitleDelay(uri, delay)
-        }
-    }
-
-    private fun updateSubtitleSpeed(uri: String, speed: Float) {
-        viewModelScope.launch {
-            mediaRepository.updateSubtitleSpeed(uri, speed)
         }
     }
 

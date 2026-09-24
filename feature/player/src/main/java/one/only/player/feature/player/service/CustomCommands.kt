@@ -25,6 +25,7 @@ enum class CustomCommands(val customAction: String) {
     SET_SUBTITLE_DELAY(customAction = "SET_SUBTITLE_DELAY"),
     GET_SUBTITLE_SPEED(customAction = "GET_SUBTITLE_SPEED"),
     SET_SUBTITLE_SPEED(customAction = "SET_SUBTITLE_SPEED"),
+    RESET_SUBTITLE_CALIBRATION(customAction = "RESET_SUBTITLE_CALIBRATION"),
     STOP_PLAYER_SESSION(customAction = "STOP_PLAYER_SESSION"),
     SHOW_CUSTOM_PIP(customAction = "SHOW_CUSTOM_PIP"),
     HIDE_CUSTOM_PIP(customAction = "HIDE_CUSTOM_PIP"),
@@ -165,11 +166,11 @@ suspend fun MediaController.isSkipSilenceEnabled(): Boolean {
     return result.await().extras.getBoolean(CustomCommands.SKIP_SILENCE_ENABLED_KEY, false)
 }
 
-fun MediaController.setSubtitleDelayMilliseconds(delayMillis: Long) {
+suspend fun MediaController.setSubtitleDelayMilliseconds(delayMillis: Long) {
     val args = Bundle().apply {
         putLong(CustomCommands.SUBTITLE_DELAY_KEY, delayMillis)
     }
-    sendCustomCommand(CustomCommands.SET_SUBTITLE_DELAY.sessionCommand, args)
+    sendCustomCommand(CustomCommands.SET_SUBTITLE_DELAY.sessionCommand, args).await()
 }
 
 suspend fun MediaController.getSubtitleDelayMilliseconds(): Long {
@@ -177,16 +178,20 @@ suspend fun MediaController.getSubtitleDelayMilliseconds(): Long {
     return result.await().extras.getLong(CustomCommands.SUBTITLE_DELAY_KEY, 0L)
 }
 
-fun MediaController.setSubtitleSpeed(speed: Float) {
+suspend fun MediaController.setSubtitleSpeed(speed: Float) {
     val args = Bundle().apply {
         putFloat(CustomCommands.SUBTITLE_SPEED_KEY, speed)
     }
-    sendCustomCommand(CustomCommands.SET_SUBTITLE_SPEED.sessionCommand, args)
+    sendCustomCommand(CustomCommands.SET_SUBTITLE_SPEED.sessionCommand, args).await()
 }
 
 suspend fun MediaController.getSubtitleSpeed(): Float {
     val result = sendCustomCommand(CustomCommands.GET_SUBTITLE_SPEED.sessionCommand, Bundle.EMPTY)
     return result.await().extras.getFloat(CustomCommands.SUBTITLE_SPEED_KEY, 1f)
+}
+
+suspend fun MediaController.resetSubtitleCalibration() {
+    sendCustomCommand(CustomCommands.RESET_SUBTITLE_CALIBRATION.sessionCommand, Bundle.EMPTY).await()
 }
 
 fun MediaController.stopPlayerSession() {

@@ -485,6 +485,7 @@
     <string name="delay">延遲</string>
     <string name="subtitle_delay_seconds">延遲（秒）</string>
     <string name="subtitle_speed_multiplier">速度（倍速）</string>
+    <string name="subtitle_calibration_reset">重置校準</string>
     <string name="speed">速度</string>
     <string name="search">搜尋</string>
     <string name="search_videos_and_folders">搜尋資料夾與影片</string>

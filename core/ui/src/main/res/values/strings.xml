@@ -506,6 +506,7 @@
     <string name="delay">Delay</string>
     <string name="subtitle_delay_seconds">Delay (sec)</string>
     <string name="subtitle_speed_multiplier">Speed (x)</string>
+    <string name="subtitle_calibration_reset">Reset calibration</string>
     <string name="speed">Speed</string>
     <string name="search">Search</string>
     <string name="search_videos_and_folders">Search videos and folders</string>

@@ -123,6 +123,8 @@ import one.only.player.core.ui.components.VideoFiltersPanel
 import one.only.player.core.ui.designsystem.AppIcons
 import one.only.player.core.ui.extensions.copy
 import one.only.player.core.ui.extensions.playerCornerControlsCapacity
+import one.only.player.feature.player.extensions.externalSubtitleId
+import one.only.player.feature.player.extensions.externalSubtitleIds
 import one.only.player.feature.player.extensions.nameRes
 import one.only.player.feature.player.extensions.noRippleClickable
 import one.only.player.feature.player.extensions.seekByRequestedOffset
@@ -251,9 +253,7 @@ internal fun MediaPlayerScreen(
     val subtitleTracksState = rememberTracksState(player, C.TRACK_TYPE_TEXT)
     val selectedSubtitleId = subtitleTracksState.tracks
         .firstOrNull { it.isSelected }
-        ?.getTrackFormat(0)
-        ?.id
-        ?.substringAfter(':')
+        ?.externalSubtitleId(player.externalSubtitleIds())
     val chaptersState = rememberChaptersState(player)
     val mediaPresentationState = rememberMediaPresentationState(player)
     val controlsVisibilityState = rememberControlsVisibilityState(
@@ -1210,7 +1210,6 @@ internal fun MediaPlayerScreen(
                         onShowSubtitleSearch = { navigateToMenuRoute(MenuRoute.SubtitleSearch) },
                         preferences = activePlayerPreferences,
                         onPreferencesChange = ::updateSubtitleStyle,
-                        onEvent = viewModel::onSubtitleOptionEvent,
                         onDismiss = ::dismissOverlay,
                     )
 
