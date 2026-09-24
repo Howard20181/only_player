@@ -147,7 +147,7 @@ private fun SubtitlePreferencesContent(
                     modifier = Modifier.testTag("switch_settings_subtitle_auto_load"),
                     title = stringResource(id = R.string.subtitle_auto_load),
                     description = stringResource(id = R.string.subtitle_auto_load_desc),
-                    icon = AppIcons.Subtitle,
+                    icon = AppIcons.Magic,
                     isChecked = uiState.preferences.isSubtitleAutoLoadEnabled,
                     onClick = { onEvent(SubtitlePreferencesUiEvent.ToggleSubtitleAutoLoad) },
                 )
@@ -163,7 +163,7 @@ private fun SubtitlePreferencesContent(
                 PreferenceSwitch(
                     modifier = Modifier.testTag("switch_settings_subtitle_remember_track"),
                     title = stringResource(id = R.string.remember_subtitle_track),
-                    icon = AppIcons.Subtitle,
+                    icon = AppIcons.Bookmark,
                     isChecked = uiState.preferences.shouldRememberSubtitleTrack,
                     onClick = { onEvent(SubtitlePreferencesUiEvent.ToggleRememberSubtitleTrack) },
                 )
@@ -171,7 +171,7 @@ private fun SubtitlePreferencesContent(
                     modifier = Modifier.testTag("item_settings_subtitle_encoding"),
                     title = stringResource(R.string.subtitle_text_encoding),
                     description = charsetResource.first { it.contains(uiState.preferences.subtitleTextEncoding) },
-                    icon = AppIcons.Subtitle,
+                    icon = AppIcons.Code,
                     onClick = { onEvent(SubtitlePreferencesUiEvent.ShowDialog(SubtitlePreferenceDialog.SubtitleEncodingDialog)) },
                 )
             }
@@ -182,14 +182,14 @@ private fun SubtitlePreferencesContent(
                     modifier = Modifier.testTag("item_settings_online_subtitle_language"),
                     title = stringResource(R.string.online_subtitle_default_language),
                     description = uiState.preferences.onlineSubtitleSearchPreferences.languageFilter.label(),
-                    icon = AppIcons.Language,
+                    icon = AppIcons.Translate,
                     onClick = { onEvent(SubtitlePreferencesUiEvent.ShowDialog(SubtitlePreferenceDialog.OnlineSubtitleLanguageDialog)) },
                 )
                 OnlineSubtitleProvider.entries.forEach { provider ->
                     PreferenceSwitch(
                         modifier = Modifier.testTag("switch_settings_online_subtitle_source_${provider.name.lowercase()}"),
                         title = provider.label(),
-                        icon = AppIcons.Subtitle,
+                        icon = AppIcons.Server,
                         isChecked = provider in uiState.preferences.onlineSubtitleSearchPreferences.providers,
                         onClick = { onEvent(SubtitlePreferencesUiEvent.ToggleOnlineSubtitleProvider(provider)) },
                     )
