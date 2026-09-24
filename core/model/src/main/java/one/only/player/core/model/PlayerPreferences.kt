@@ -76,6 +76,7 @@ data class PlayerPreferences(
     val isSubtitleAutoLoadEnabled: Boolean = true,
     val shouldUseSystemCaptionStyle: Boolean = false,
     val preferredSubtitleLanguage: String = "",
+    val onlineSubtitleSearchPreferences: OnlineSubtitleSearchPreferences = OnlineSubtitleSearchPreferences(),
     val subtitleTextEncoding: String = "",
     val subtitleTextSize: Float = DEFAULT_SUBTITLE_TEXT_SIZE,
     val shouldShowSubtitleBackground: Boolean = false,

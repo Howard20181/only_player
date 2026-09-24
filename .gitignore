@@ -32,6 +32,10 @@ google-services.json
 # Android Profiling
 *.hprof
 
+# Python bytecode
+**/__pycache__/
+*.py[cod]
+
 # ffmpeg
 nextlib/ffmpeg/build
 nextlib/ffmpeg/output

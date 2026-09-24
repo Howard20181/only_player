@@ -13,6 +13,7 @@ object AppIcons {
     val Audio: ImageVector get() = MingCuteAudio
     val Background: ImageVector get() = MingCuteBackground
     val BlurOn: ImageVector get() = MingCuteBlurOn
+    val Bookmark: ImageVector get() = MingCuteBookmark
     val BorderOuter: ImageVector get() = MingCuteBorderOuter
     val Bold: ImageVector get() = MingCuteBold
     val Brightness: ImageVector get() = MingCuteBrightness
@@ -24,6 +25,7 @@ object AppIcons {
     val CheckBox: ImageVector get() = MingCuteCheckBox
     val CheckBoxOutline: ImageVector get() = MingCuteCheckBoxOutline
     val Close: ImageVector get() = MingCuteClose
+    val Code: ImageVector get() = MingCuteCode
     val Cloud: ImageVector get() = MingCuteCloud
     val ColorFilter: ImageVector get() = MingCuteColorFilter
     val Copy: ImageVector get() = MingCuteCopy
@@ -60,6 +62,7 @@ object AppIcons {
     val LibraryBooks: ImageVector get() = MingCuteLibraryBooks
     val Link: ImageVector get() = MingCuteLink
     val Lock: ImageVector get() = MingCuteLock
+    val Magic: ImageVector get() = MingCuteMagic
     val Unlock: ImageVector get() = MingCuteUnlock
     val Loop: ImageVector get() = MingCuteLoop
     val Menu: ImageVector get() = MingCuteMenu
@@ -84,6 +87,7 @@ object AppIcons {
     val Search: ImageVector get() = MingCuteSearch
     val SelectAll: ImageVector get() = MingCuteSelectAll
     val Sensitivity: ImageVector get() = MingCuteSensitivity
+    val Server: ImageVector get() = MingCuteServer
     val Settings: ImageVector get() = MingCuteSettings
     val Share: ImageVector get() = MingCuteShare
     val Shadow: ImageVector get() = MingCuteShadow
@@ -102,6 +106,7 @@ object AppIcons {
     val Timer: ImageVector get() = MingCuteTimer
     val Title: ImageVector get() = MingCuteTitle
     val Transfer: ImageVector get() = MingCuteTransfer
+    val Translate: ImageVector get() = MingCuteTranslate
     val Update: ImageVector get() = MingCuteUpdate
     val Video: ImageVector get() = MingCuteVideo
     val VolumeUp: ImageVector get() = MingCuteVolumeUp

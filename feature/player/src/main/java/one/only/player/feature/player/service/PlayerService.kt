@@ -67,8 +67,10 @@ import io.github.peerless2012.ass.media.type.AssRenderType
 import java.io.File
 import java.io.InputStream
 import javax.inject.Inject
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -102,6 +104,7 @@ import one.only.player.core.model.DecoderPriority
 import one.only.player.core.model.LoopMode
 import one.only.player.core.model.PlayerPreferences
 import one.only.player.core.model.Resume
+import one.only.player.core.model.SubtitleCalibration
 import one.only.player.core.model.ThemeConfig
 import one.only.player.core.ui.R as coreUiR
 import one.only.player.feature.player.PlayerActivity
@@ -109,8 +112,11 @@ import one.only.player.feature.player.datasource.FtpDataSource
 import one.only.player.feature.player.datasource.SmbDataSource
 import one.only.player.feature.player.engine.media3.SeekMapInjectingExtractor
 import one.only.player.feature.player.extensions.addAdditionalSubtitleConfiguration
+import one.only.player.feature.player.extensions.addedSubtitleIds
 import one.only.player.feature.player.extensions.audioTrackIndex
 import one.only.player.feature.player.extensions.copy
+import one.only.player.feature.player.extensions.externalSubtitleId
+import one.only.player.feature.player.extensions.externalSubtitleIds
 import one.only.player.feature.player.extensions.getManuallySelectedTrackIndex
 import one.only.player.feature.player.extensions.isApproximateSeekEnabled
 import one.only.player.feature.player.extensions.isAtEndOfCurrentMediaItem
@@ -122,6 +128,7 @@ import one.only.player.feature.player.extensions.remoteDirectoryPath
 import one.only.player.feature.player.extensions.remoteFilePath
 import one.only.player.feature.player.extensions.remoteProtocol
 import one.only.player.feature.player.extensions.remoteServerId
+import one.only.player.feature.player.extensions.removeAdditionalSubtitleConfiguration
 import one.only.player.feature.player.extensions.requestHeaders
 import one.only.player.feature.player.extensions.setExtras
 import one.only.player.feature.player.extensions.setIsScrubbingModeEnabled
@@ -129,8 +136,8 @@ import one.only.player.feature.player.extensions.subtitleDelayMilliseconds
 import one.only.player.feature.player.extensions.subtitleSpeed
 import one.only.player.feature.player.extensions.subtitleTrackIndex
 import one.only.player.feature.player.extensions.switchTrack
-import one.only.player.feature.player.extensions.uriToSubtitleConfiguration
 import one.only.player.feature.player.extensions.videoZoom
+import one.only.player.feature.player.extensions.withoutTrackPeriodPrefix
 import one.only.player.feature.player.model.extractVideoChapters
 import one.only.player.feature.player.model.toBundle
 import one.only.player.feature.player.service.artwork.PlaybackArtworkLoader
@@ -154,6 +161,7 @@ import one.only.player.feature.player.service.playback.PlaybackStartupAnalyticsL
 import one.only.player.feature.player.service.playback.PlaybackStateCoordinator
 import one.only.player.feature.player.service.seek.PreciseSeekCoordinator
 import one.only.player.feature.player.service.subtitle.ExternalSubtitleLoader
+import one.only.player.feature.player.service.subtitle.SubtitleCalibrationCoordinator
 import one.only.player.feature.player.service.subtitle.SubtitleTrackSelector
 import one.only.player.feature.player.subtitle.AssHandlerRegistry
 import one.only.player.feature.player.subtitle.NormalizingAssMatroskaExtractor
@@ -247,6 +255,17 @@ class PlayerService : MediaSessionService() {
     private var isAmbienceModeEnabled = false
     private var ambienceTargetAspectRatio = DEFAULT_AMBIENCE_TARGET_ASPECT_RATIO
     private val subtitleTrackSelector = SubtitleTrackSelector { playerPreferences.preferredSubtitleLanguage }
+    private val subtitleCalibrationCoordinator by lazy {
+        SubtitleCalibrationCoordinator(
+            mediaRepository = mediaRepository,
+            resolvePlaybackStateUri = playbackStateCoordinator::resolvePlaybackStateUri,
+        )
+    }
+
+    // 当前加载或应用的字幕键，避免同一轨道重复查询
+    private var appliedSubtitleCalibrationKey: String? = null
+    private var subtitleCalibrationLoadJob: Job? = null
+    private var activeSubtitleCalibration = SubtitleCalibration.Default
     private val externalSubtitleLoader by lazy {
         ExternalSubtitleLoader(
             context = applicationContext,
@@ -254,12 +273,14 @@ class PlayerService : MediaSessionService() {
             webDavClient = webDavClient,
             smbClient = smbClient,
             ftpClient = ftpClient,
+            onlineSubtitleRepository = onlineSubtitleRepository,
         )
     }
     private val mediaParserRetried = mutableSetOf<String>()
     private val softwareDecoderRetried = mutableSetOf<String>()
     private var isPendingExternalSubAutoSelect = false
     private var pendingRememberedSubtitleSelection: PendingSubtitleSelection? = null
+    private var pendingExternalSubtitleSelection: ExternalSubtitleSelection? = null
     private var assHandler: AssHandler? = null
     private var activeDecoderPriority: DecoderPriority = DecoderPriority.AUTOMATIC
     private var hasPausedAtEndOfQueue = false
@@ -353,7 +374,11 @@ class PlayerService : MediaSessionService() {
             preciseSeekCoordinator.resetForMediaItem(mediaItem?.mediaId)
             isMediaItemReady = false
             isPendingExternalSubAutoSelect = false
+            appliedSubtitleCalibrationKey = null
+            subtitleCalibrationLoadJob?.cancel()
+            activeSubtitleCalibration = SubtitleCalibration.Default
             pendingRememberedSubtitleSelection = null
+            if (pendingExternalSubtitleSelection?.mediaId != mediaItem?.mediaId) pendingExternalSubtitleSelection = null
             if (mediaItem != null) {
                 serviceScope.launch {
                     val playbackStateUri = playbackStateCoordinator.resolvePlaybackStateUri(mediaItem)
@@ -482,6 +507,7 @@ class PlayerService : MediaSessionService() {
         override fun onTracksChanged(tracks: Tracks) {
             super.onTracksChanged(tracks)
             if (tracks.groups.isEmpty()) return
+            if (selectExternalSubtitleIfAvailable(tracks)) return
 
             if (isPendingExternalSubAutoSelect) {
                 isPendingExternalSubAutoSelect = false
@@ -571,6 +597,15 @@ class PlayerService : MediaSessionService() {
                     )
                 },
             )
+        }
+
+        override fun onEvents(
+            player: Player,
+            events: Player.Events,
+        ) {
+            if (events.containsAny(Player.EVENT_TRACKS_CHANGED, Player.EVENT_MEDIA_ITEM_TRANSITION)) {
+                mediaSession?.player?.let(::applySubtitleCalibrationForSelectedTrack)
+            }
         }
 
         override fun onTrackSelectionParametersChanged(parameters: TrackSelectionParameters) {
@@ -1307,11 +1342,9 @@ class PlayerService : MediaSessionService() {
     }
 
     private fun handleRepeatedPlayback(player: Player) {
-        player.currentMediaItem?.mediaMetadata?.let { metadata ->
-            player.setPlaybackSpeed(playerPreferences.defaultPlaybackSpeed)
-            player.playerSpecificSubtitleDelayMilliseconds = metadata.subtitleDelayMilliseconds ?: 0L
-            player.playerSpecificSubtitleSpeed = metadata.subtitleSpeed ?: 1f
-        }
+        if (player.currentMediaItem == null) return
+        player.setPlaybackSpeed(playerPreferences.defaultPlaybackSpeed)
+        applySubtitleCalibration(player, activeSubtitleCalibration)
     }
 
     private fun Bundle.toPlayerPreferences(): PlayerPreferences = PlayerPreferences(
@@ -1400,7 +1433,7 @@ class PlayerService : MediaSessionService() {
                         Logger.info(TAG, "Add subtitle track rejected: empty uri")
                         return@future SessionResult(SessionError.ERROR_BAD_VALUE)
                     }
-                    val subtitleUri = subtitleUriString.toUri()
+                    val subtitleUri = onlineSubtitleRepository.resolveSubtitle(subtitleUriString.toUri())
                     val player = mediaSession?.player
                     if (player == null) {
                         Logger.info(TAG, "Add subtitle track rejected: player unavailable")
@@ -1412,7 +1445,11 @@ class PlayerService : MediaSessionService() {
                         return@future SessionResult(SessionError.ERROR_BAD_VALUE)
                     }
 
-                    val newSubConfiguration = uriToSubtitleConfiguration(
+                    if (currentMediaItem.mediaId != args.getString(CustomCommands.SUBTITLE_MEDIA_ID_KEY)) {
+                        return@future SessionResult(SessionError.ERROR_BAD_VALUE)
+                    }
+
+                    val newSubConfiguration = externalSubtitleLoader.buildConfiguration(
                         uri = subtitleUri,
                         subtitleEncoding = playerPreferences.subtitleTextEncoding,
                     )
@@ -1425,10 +1462,17 @@ class PlayerService : MediaSessionService() {
                         uri = playbackStateUri,
                         subtitleUri = subtitleUri,
                     )
+                    if (mediaSession?.player !== player || player.currentMediaItem?.mediaId != currentMediaItem.mediaId) {
+                        return@future SessionResult(SessionError.ERROR_BAD_VALUE)
+                    }
+                    pendingExternalSubtitleSelection = ExternalSubtitleSelection(currentMediaItem.mediaId, newSubConfiguration.id)
                     player.addAdditionalSubtitleConfiguration(newSubConfiguration)
+                    selectExternalSubtitleIfAvailable(player.currentTracks)
                     Logger.info(TAG, "Added subtitle track: subtitle=${subtitleUri.toLogSummary()} media=${playbackStateUri.toLogSummary()}")
                     return@future SessionResult(SessionResult.RESULT_SUCCESS)
                 }
+
+                CustomCommands.REMOVE_SUBTITLE_TRACK -> removeAddedSubtitle(args)
 
                 CustomCommands.PRECISE_SEEK_TO -> {
                     val targetPositionMs = args.getLong(CustomCommands.SEEK_POSITION_MS_KEY, C.TIME_UNSET)
@@ -1573,7 +1617,9 @@ class PlayerService : MediaSessionService() {
                 }
 
                 CustomCommands.GET_SUBTITLE_DELAY -> {
-                    val subtitleDelay = mediaSession?.player?.playerSpecificSubtitleDelayMilliseconds ?: 0
+                    // 等待切轨后的校准加载，避免面板提前取得旧值
+                    subtitleCalibrationLoadJob?.join()
+                    val subtitleDelay = activeSubtitleCalibration.delayMilliseconds
                     return@future SessionResult(
                         SessionResult.RESULT_SUCCESS,
                         Bundle().apply {
@@ -1583,13 +1629,13 @@ class PlayerService : MediaSessionService() {
                 }
 
                 CustomCommands.SET_SUBTITLE_DELAY -> {
-                    val subtitleDelay = args.getLong(CustomCommands.SUBTITLE_DELAY_KEY)
-                    mediaSession?.player?.playerSpecificSubtitleDelayMilliseconds = subtitleDelay
-                    return@future SessionResult(SessionResult.RESULT_SUCCESS)
+                    val delay = args.getLong(CustomCommands.SUBTITLE_DELAY_KEY)
+                    return@future updateSubtitleCalibration { it.copy(delayMilliseconds = delay) }
                 }
 
                 CustomCommands.GET_SUBTITLE_SPEED -> {
-                    val subtitleSpeed = mediaSession?.player?.playerSpecificSubtitleSpeed ?: 0f
+                    subtitleCalibrationLoadJob?.join()
+                    val subtitleSpeed = activeSubtitleCalibration.speed
                     return@future SessionResult(
                         SessionResult.RESULT_SUCCESS,
                         Bundle().apply {
@@ -1599,9 +1645,13 @@ class PlayerService : MediaSessionService() {
                 }
 
                 CustomCommands.SET_SUBTITLE_SPEED -> {
-                    val subtitleSpeed = args.getFloat(CustomCommands.SUBTITLE_SPEED_KEY)
-                    mediaSession?.player?.playerSpecificSubtitleSpeed = subtitleSpeed
-                    return@future SessionResult(SessionResult.RESULT_SUCCESS)
+                    val speed = args.getFloat(CustomCommands.SUBTITLE_SPEED_KEY)
+                    if (!speed.isFinite() || speed <= 0f) return@future SessionResult(SessionError.ERROR_BAD_VALUE)
+                    return@future updateSubtitleCalibration { it.copy(speed = speed.coerceIn(0.1f, 10f)) }
+                }
+
+                CustomCommands.RESET_SUBTITLE_CALIBRATION -> {
+                    return@future updateSubtitleCalibration { SubtitleCalibration.Default }
                 }
 
                 CustomCommands.SHOW_CUSTOM_PIP -> {
@@ -1917,7 +1967,7 @@ class PlayerService : MediaSessionService() {
                 )
 
                 val externalSubs = videoState?.externalSubs ?: emptyList()
-                val validExternalSubs = externalSubs.filter { subUri ->
+                val validExternalSubs = externalSubs.map { onlineSubtitleRepository.resolveSubtitle(it) }.filter { subUri ->
                     if (externalSubtitleLoader.isDirectSubtitleUri(subUri)) return@filter true
                     try {
                         contentResolver.openInputStream(subUri)?.close()
@@ -1927,13 +1977,12 @@ class PlayerService : MediaSessionService() {
                         false
                     }
                 }
-                if (validExternalSubs.size != externalSubs.size) {
+                if (validExternalSubs != externalSubs) {
                     mediaRepository.updateExternalSubs(
                         uri = playbackStateUri,
                         externalSubs = validExternalSubs,
                     )
                 }
-                validExternalSubs.forEach(onlineSubtitleRepository::touchSubtitle)
                 val existingSubConfigurations = mediaItem.localConfiguration?.subtitleConfigurations ?: emptyList()
                 val restoredSubConfigurations = validExternalSubs.map { subtitleUri ->
                     externalSubtitleLoader.buildConfiguration(
@@ -2028,6 +2077,7 @@ class PlayerService : MediaSessionService() {
                                 subtitleTrackIndex = subtitleTrackIndex,
                                 subtitleDelayMilliseconds = subtitleDelay,
                                 subtitleSpeed = subtitleSpeed,
+                                addedSubtitleIds = validExternalSubs.map(Uri::toString),
                                 videoWidth = videoWidth,
                                 videoHeight = videoHeight,
                                 isApproximateSeekEnabled = isApproximateSeekEnabled,
@@ -2217,6 +2267,137 @@ class PlayerService : MediaSessionService() {
             }
         }
     }
+
+    private suspend fun removeAddedSubtitle(args: Bundle): SessionResult {
+        val subtitleId = args.getString(CustomCommands.SUBTITLE_TRACK_URI_KEY)
+            ?: return SessionResult(SessionError.ERROR_BAD_VALUE)
+        val player = mediaSession?.player ?: return SessionResult(SessionError.ERROR_BAD_VALUE)
+        val mediaItem = player.currentMediaItem ?: return SessionResult(SessionError.ERROR_BAD_VALUE)
+        if (mediaItem.mediaId != args.getString(CustomCommands.SUBTITLE_MEDIA_ID_KEY)) {
+            return SessionResult(SessionError.ERROR_BAD_VALUE)
+        }
+        if (subtitleId !in mediaItem.mediaMetadata.addedSubtitleIds) return SessionResult(SessionError.ERROR_BAD_VALUE)
+
+        val textTracks = subtitleTrackSelector.supportedTextTracks(player.currentTracks)
+        val selectedIndex = textTracks.indexOfFirst { it.isSelected }
+        val removedIndex = textTracks.indexOfFirst { it.externalSubtitleId(player.externalSubtitleIds()) == subtitleId }
+        val selectedSubtitleId = textTracks.getOrNull(selectedIndex)?.getTrackFormat(0)?.id?.withoutTrackPeriodPrefix()
+            ?.takeUnless { it == subtitleId }
+        val newSelectedIndex = when {
+            selectedIndex == removedIndex -> -1
+            removedIndex in 0 until selectedIndex -> selectedIndex - 1
+            else -> selectedIndex
+        }
+        val playbackStateUri = playbackStateCoordinator.resolvePlaybackStateUri(mediaItem)
+        val externalSubs = mediaRepository.getVideoState(playbackStateUri)?.externalSubs.orEmpty()
+        mediaRepository.updateExternalSubs(playbackStateUri, externalSubs.filterNot { it.toString() == subtitleId })
+        mediaRepository.updateMediumSubtitleTrack(playbackStateUri, newSelectedIndex)
+        if (mediaSession?.player !== player || player.currentMediaItem?.mediaId != mediaItem.mediaId) {
+            return SessionResult(SessionError.ERROR_BAD_VALUE)
+        }
+
+        pendingExternalSubtitleSelection = ExternalSubtitleSelection(mediaItem.mediaId, selectedSubtitleId)
+        player.removeAdditionalSubtitleConfiguration(subtitleId, newSelectedIndex)
+        return SessionResult(SessionResult.RESULT_SUCCESS)
+    }
+
+    private fun selectExternalSubtitleIfAvailable(tracks: Tracks): Boolean {
+        val selection = pendingExternalSubtitleSelection ?: return false
+        val player = mediaSession?.player ?: return false
+        if (player.currentMediaItem?.mediaId != selection.mediaId) return false
+        val index = if (selection.subtitleId == null) {
+            -1
+        } else {
+            subtitleTrackSelector.supportedTextTracks(tracks)
+                .indexOfFirst { it.getTrackFormat(0).id?.withoutTrackPeriodPrefix() == selection.subtitleId }
+                .takeIf { it >= 0 } ?: return false
+        }
+
+        pendingExternalSubtitleSelection = null
+        pendingRememberedSubtitleSelection = null
+        isPendingExternalSubAutoSelect = false
+        isMediaItemReady = true
+        player.switchTrack(C.TRACK_TYPE_TEXT, index)
+        return true
+    }
+
+    private fun applySubtitleCalibrationForSelectedTrack(player: Player) {
+        val mediaItem = player.currentMediaItem ?: return
+        val track = subtitleCalibrationCoordinator.selectedTrack(player)
+        if (track?.key == appliedSubtitleCalibrationKey) return
+        subtitleCalibrationLoadJob?.cancel()
+        appliedSubtitleCalibrationKey = track?.key
+        if (track == null) {
+            applySubtitleCalibration(player, SubtitleCalibration.Default)
+            return
+        }
+        subtitleCalibrationLoadJob = serviceScope.launch {
+            try {
+                val calibration = subtitleCalibrationCoordinator.resolveCalibration(mediaItem, track)
+                if (mediaSession?.player !== player || player.currentMediaItem?.mediaId != mediaItem.mediaId) return@launch
+                if (subtitleCalibrationCoordinator.selectedTrack(player)?.key != track.key) return@launch
+                applySubtitleCalibration(player, calibration)
+            } catch (exception: CancellationException) {
+                throw exception
+            } catch (exception: Exception) {
+                appliedSubtitleCalibrationKey = null
+                Logger.error(TAG, "字幕校准加载失败", exception)
+            }
+        }
+    }
+
+    private fun applySubtitleCalibration(
+        player: Player,
+        calibration: SubtitleCalibration,
+    ) {
+        activeSubtitleCalibration = calibration
+        player.playerSpecificSubtitleDelayMilliseconds = calibration.delayMilliseconds
+        player.playerSpecificSubtitleSpeed = calibration.speed
+        val mediaItem = player.currentMediaItem ?: return
+        if (mediaItem.mediaMetadata.subtitleDelayMilliseconds == calibration.delayMilliseconds &&
+            mediaItem.mediaMetadata.subtitleSpeed == calibration.speed
+        ) {
+            return
+        }
+        player.replaceMediaItem(
+            player.currentMediaItemIndex,
+            mediaItem.copy(
+                subtitleDelayMilliseconds = calibration.delayMilliseconds,
+                subtitleSpeed = calibration.speed,
+            ),
+        )
+    }
+
+    private suspend fun updateSubtitleCalibration(
+        transform: (SubtitleCalibration) -> SubtitleCalibration,
+    ): SessionResult {
+        val player = mediaSession?.player ?: return SessionResult(SessionError.ERROR_BAD_VALUE)
+        val mediaItem = player.currentMediaItem ?: return SessionResult(SessionError.ERROR_BAD_VALUE)
+        val track = subtitleCalibrationCoordinator.selectedTrack(player) ?: return SessionResult(SessionError.ERROR_BAD_VALUE)
+        subtitleCalibrationLoadJob?.join()
+        if (mediaSession?.player !== player ||
+            player.currentMediaItem?.mediaId != mediaItem.mediaId ||
+            subtitleCalibrationCoordinator.selectedTrack(player)?.key != track.key
+        ) {
+            return SessionResult(SessionError.ERROR_BAD_VALUE)
+        }
+        val calibration = transform(activeSubtitleCalibration)
+        applySubtitleCalibration(player, calibration)
+        return try {
+            subtitleCalibrationCoordinator.save(mediaItem, track.key, calibration)
+            SessionResult(SessionResult.RESULT_SUCCESS)
+        } catch (exception: CancellationException) {
+            throw exception
+        } catch (exception: Exception) {
+            Logger.error(TAG, "字幕校准保存失败", exception)
+            SessionResult(SessionError.ERROR_IO)
+        }
+    }
+
+    private data class ExternalSubtitleSelection(
+        val mediaId: String,
+        val subtitleId: String?,
+    )
 
     private fun Player.restorePendingOrBestSubtitleTrack(
         tracks: Tracks,
